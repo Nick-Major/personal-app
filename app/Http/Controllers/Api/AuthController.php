@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -29,24 +28,33 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user' => new UserResource($user),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames(),
+            ],
             'token' => $token,
         ]);
     }
 
     public function logout(Request $request)
     {
-        // Если пользователь аутентифицирован - удаляем токен
         if ($request->user()) {
             $request->user()->currentAccessToken()->delete();
             return response()->json(['message' => 'Успешный выход из системы']);
         }
-        
+
         return response()->json(['message' => 'Пользователь не аутентифицирован'], 401);
     }
 
     public function user(Request $request)
     {
-        return new UserResource($request->user());
+        return response()->json([
+            'id' => $request->user()->id,
+            'name' => $request->user()->name,
+            'email' => $request->user()->email,
+            'roles' => $request->user()->getRoleNames(),
+        ]);
     }
 }
