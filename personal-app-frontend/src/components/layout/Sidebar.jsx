@@ -1,11 +1,12 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
+import { dispatcherMenu } from '../../config/dispatcherMenu'
 import './Sidebar.css'
 
 const Sidebar = ({ user }) => {
   const getRoleRoutes = () => {
     const role = user?.roles?.[0]?.name
-    
+
     switch(role) {
       case 'initiator':
         return [
@@ -26,26 +27,66 @@ const Sidebar = ({ user }) => {
           { path: '/brigadier/requests', label: 'Заявки' }
         ]
       case 'dispatcher':
-        return [
-          { path: '/dispatcher/dashboard', label: 'Дашборд' },
-          { path: '/dispatcher/requests', label: 'Обработка заявок' },
-          { path: '/dispatcher/personnel', label: 'Учет персонала' }
-        ]
+        // Для диспетчера используем расширенное меню
+        return dispatcherMenu.flatMap(section => section.items)
       default:
         return []
     }
   }
 
-  const routes = getRoleRoutes()
+  const renderDispatcherMenu = () => {
+    return dispatcherMenu.map((section, index) => (
+      <div key={index} className="sidebar-section">
+        <h3 className="sidebar-section-title">{section.title}</h3>
+        <ul className="sidebar-nav-list">
+          {section.items.map(item => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  `nav-link ${isActive ? 'active' : ''}`
+                }
+              >
+                <span className="nav-link-text">{item.label}</span>
+                {item.badge && (
+                  <span className="nav-badge">{item.badge}</span>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
 
+  const role = user?.roles?.[0]?.name
+
+  if (role === 'dispatcher') {
+    return (
+      <nav className="sidebar">
+        <div className="sidebar-header">
+          <h3 className="sidebar-title">Навигация</h3>
+        </div>
+        <div className="sidebar-content">
+          {renderDispatcherMenu()}
+        </div>
+      </nav>
+    )
+  }
+
+  // Старый вариант для других ролей
+  const routes = getRoleRoutes()
   return (
     <nav className="sidebar">
+      <div className="sidebar-header">
+        <h3 className="sidebar-title">Навигация</h3>
+      </div>
       <ul className="sidebar-nav">
         {routes.map(route => (
           <li key={route.path}>
-            <NavLink 
+            <NavLink
               to={route.path}
-              className={({ isActive }) => 
+              className={({ isActive }) =>
                 `nav-link ${isActive ? 'active' : ''}`
               }
             >

@@ -1,13 +1,58 @@
 .sidebar {
-  width: 250px;
-  background-color: #34495e;
+  width: 280px;
+  background-color: #2c3e50;
   color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #34495e;
+  background: #34495e;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ecf0f1;
+}
+
+.sidebar-content {
+  flex: 1;
   padding: 20px 0;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  margin-bottom: 25px;
+}
+
+.sidebar-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #95a5a6;
+  padding: 0 20px 10px 20px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav-list li {
+  margin: 0;
 }
 
 .sidebar-nav {
   list-style: none;
-  padding: 0;
+  padding: 20px 0;
   margin: 0;
 }
 
@@ -16,7 +61,9 @@
 }
 
 .nav-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px 20px;
   color: #ecf0f1;
   text-decoration: none;
@@ -25,12 +72,31 @@
 }
 
 .nav-link:hover {
-  background-color: #3c5a78;
-  color: white;
+  background-color: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+  border-left-color: #3498db;
 }
 
 .nav-link.active {
-  background-color: #3498db;
+  background-color: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  border-left-color: #3498db;
+}
+
+.nav-link-text {
+  font-size: 14px;
+}
+
+.nav-badge {
+  background: #e74c3c;
   color: white;
-  border-left-color: #2980b9;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Для старых меню (не диспетчер) */
+.sidebar-nav .nav-link {
+  justify-content: flex-start;
 }
