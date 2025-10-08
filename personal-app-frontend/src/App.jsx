@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/auth/Login'
-import InitiatorDashboard from './pages/initiator/Dashboard'
+import InitiatorRoutes from './pages/initiator/InitiatorRoutes'
 import ExecutorDashboard from './pages/executor/Dashboard'
 import BrigadierDashboard from './pages/brigadier/Dashboard'
 import DispatcherDashboard from './pages/dispatcher/Dashboard'
@@ -14,10 +14,30 @@ import './App.css'
 const RoleRedirect = () => {
   const { user } = useAuth()
   
-  if (!user) return <Navigate to="/login" replace />
+  console.log('RoleRedirect - user:', user)
   
-  const role = user.roles[0]
-  switch(role) {
+  if (!user) {
+    console.log('No user, redirecting to login')
+    return <Navigate to="/login" replace />
+  }
+  
+  console.log('User roles:', user.roles)
+  
+  // ФИКС: Правильно получаем роль из объекта
+  let role = 'initiator'; // значение по умолчанию
+  
+  if (user.roles && user.roles.length > 0) {
+    // Роли приходят как массив объектов: [{id: 1, name: 'initiator', ...}]
+    role = user.roles[0].name;
+  }
+  
+  console.log('Detected role:', role)
+
+  // ФИКС: Убедимся что role - строка
+  const roleString = String(role).toLowerCase();
+  console.log('Role string:', roleString);
+
+  switch(roleString) {
     case 'initiator':
       return <Navigate to="/initiator/dashboard" replace />
     case 'executor':
@@ -27,7 +47,8 @@ const RoleRedirect = () => {
     case 'dispatcher':
       return <Navigate to="/dispatcher/dashboard" replace />
     default:
-      return <Navigate to="/login" replace />
+      console.log('Unknown role, redirecting to initiator dashboard')
+      return <Navigate to="/initiator/dashboard" replace />
   }
 }
 
@@ -43,7 +64,7 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<RoleRedirect />} />
-            <Route path="initiator/*" element={<InitiatorDashboard />} />
+            <Route path="initiator/*" element={<InitiatorRoutes />} />
             <Route path="executor/*" element={<ExecutorDashboard />} />
             <Route path="brigadier/*" element={<BrigadierDashboard />} />
             <Route path="dispatcher/*" element={<DispatcherDashboard />} />

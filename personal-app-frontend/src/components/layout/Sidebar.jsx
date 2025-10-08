@@ -1,20 +1,17 @@
+// personal-app-frontend/src/components/layout/Sidebar.jsx
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { dispatcherMenu } from '../../config/dispatcherMenu'
+import { initiatorMenu } from '../../config/initiatorMenu' // ← ДОБАВИЛИ
 import './Sidebar.css'
 
 const Sidebar = ({ user }) => {
-  const getRoleRoutes = () => {
+  const getRoleMenu = () => {
     const role = user?.roles?.[0]?.name
 
     switch(role) {
       case 'initiator':
-        return [
-          { path: '/initiator/dashboard', label: 'Дашборд' },
-          { path: '/initiator/brigadiers', label: 'Назначение бригадиров' },
-          { path: '/initiator/requests', label: 'Мои заявки' },
-          { path: '/initiator/create-request', label: 'Создать заявку' }
-        ]
+        return initiatorMenu // ← ИСПОЛЬЗУЕМ initiatorMenu
       case 'executor':
         return [
           { path: '/executor/dashboard', label: 'Дашборд' },
@@ -27,15 +24,14 @@ const Sidebar = ({ user }) => {
           { path: '/brigadier/requests', label: 'Заявки' }
         ]
       case 'dispatcher':
-        // Для диспетчера используем расширенное меню
         return dispatcherMenu.flatMap(section => section.items)
       default:
         return []
     }
   }
 
-  const renderDispatcherMenu = () => {
-    return dispatcherMenu.map((section, index) => (
+  const renderMenuSections = (menu) => {
+    return menu.map((section, index) => (
       <div key={index} className="sidebar-section">
         <h3 className="sidebar-section-title">{section.title}</h3>
         <ul className="sidebar-nav-list">
@@ -61,14 +57,15 @@ const Sidebar = ({ user }) => {
 
   const role = user?.roles?.[0]?.name
 
-  if (role === 'dispatcher') {
+  if (role === 'dispatcher' || role === 'initiator') {
+    const menu = role === 'dispatcher' ? dispatcherMenu : initiatorMenu
     return (
       <nav className="sidebar">
         <div className="sidebar-header">
           <h3 className="sidebar-title">Навигация</h3>
         </div>
         <div className="sidebar-content">
-          {renderDispatcherMenu()}
+          {renderMenuSections(menu)}
         </div>
       </nav>
     )

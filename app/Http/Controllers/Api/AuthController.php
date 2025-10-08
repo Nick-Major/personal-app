@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Api/AuthController.php
 
 namespace App\Http\Controllers\Api;
 
@@ -25,36 +26,29 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        // Удаляем существующие токены пользователя (опционально)
+        // $user->tokens()->delete();
+        
+        // Создаем новый токен
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-            ],
+            'user' => $user->load('roles'),
             'token' => $token,
         ]);
     }
 
     public function logout(Request $request)
     {
-        if ($request->user()) {
-            $request->user()->currentAccessToken()->delete();
-            return response()->json(['message' => 'Успешный выход из системы']);
-        }
-
-        return response()->json(['message' => 'Пользователь не аутентифицирован'], 401);
+        // Удаляем текущий токен
+        $request->user()->currentAccessToken()->delete();
+        
+        return response()->json(['message' => 'Logged out successfully']);
     }
 
     public function user(Request $request)
     {
-        return response()->json([
-            'id' => $request->user()->id,
-            'name' => $request->user()->name,
-            'email' => $request->user()->email,
-            'roles' => $request->user()->getRoleNames(),
-        ]);
+        // Возвращаем пользователя с ролями
+        return response()->json($request->user()->load('roles'));
     }
 }

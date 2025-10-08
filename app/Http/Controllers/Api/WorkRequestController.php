@@ -87,4 +87,16 @@ class WorkRequestController extends Controller
 
         return new WorkRequestResource($workRequest->load(['initiator', 'brigadier', 'dispatcher', 'shifts']));
     }
+
+    public function myRequests()
+    {
+        $userId = auth()->id();
+        
+        $requests = WorkRequest::where('initiator_id', $userId)
+            ->with(['initiator', 'brigadier', 'dispatcher', 'shifts'])
+            ->latest()
+            ->get();
+            
+        return WorkRequestResource::collection($requests);
+    }
 }

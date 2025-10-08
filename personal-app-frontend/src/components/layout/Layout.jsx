@@ -1,3 +1,4 @@
+// personal-app-frontend/src/components/layout/Layout.jsx
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -10,10 +11,10 @@ const Layout = () => {
 
   return (
     <div className="layout">
-      <Header user={user} onLogout={logout} />
-      <div className="layout-content">
-        <Sidebar user={user} />
-        <main className="main-content">
+      <Sidebar user={user} />
+      <div className="main-content-wrapper">
+        <Header user={user} onLogout={logout} />
+        <main className="layout-content">
           <Outlet />
         </main>
       </div>

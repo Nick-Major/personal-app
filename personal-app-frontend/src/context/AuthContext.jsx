@@ -24,7 +24,9 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token')
       if (token) {
         const userData = await authService.getUser()
-        setUser(userData)
+        setUser(userData);
+        console.log('User set in context:', userData);
+        console.log('User roles structure:', userData?.roles);
       }
     } catch (error) {
       console.log('Auth check failed:', error)

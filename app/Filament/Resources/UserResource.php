@@ -25,27 +25,54 @@ class UserResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('ФИО'),
+                    
                 Forms\Components\TextInput::make('email')
                     ->email()
                     ->required()
-                    ->maxLength(255),
-                Forms\Components\DateTimePicker::make('email_verified_at'),
+                    ->maxLength(255)
+                    ->label('Email'),
+                    
+                Forms\Components\DateTimePicker::make('email_verified_at')
+                    ->label('Email подтвержден'),
+                    
                 Forms\Components\TextInput::make('password')
                     ->password()
-                    ->required()
-                    ->maxLength(255),
+                    ->required(fn ($livewire) => $livewire instanceof Pages\CreateUser)
+                    ->maxLength(255)
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->hiddenOn('edit')
+                    ->label('Пароль'),
+                    
+                // ДОБАВИТЬ ЭТО ПОЛЕ - выбор ролей
+                Forms\Components\Select::make('roles')
+                    ->relationship('roles', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->searchable()
+                    ->label('Роли'),
+                    
                 Forms\Components\TextInput::make('phone')
                     ->tel()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Телефон'),
+                    
                 Forms\Components\TextInput::make('specialization')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Специализация'),
+                    
                 Forms\Components\Toggle::make('is_contractor')
-                    ->required(),
+                    ->required()
+                    ->label('Подрядчик'),
+                    
                 Forms\Components\TextInput::make('contractor_id')
-                    ->numeric(),
+                    ->numeric()
+                    ->label('ID подрядчика'),
+                    
                 Forms\Components\Textarea::make('notes')
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->label('Заметки'),
             ]);
     }
 
