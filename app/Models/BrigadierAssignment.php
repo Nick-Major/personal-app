@@ -12,17 +12,6 @@ class BrigadierAssignment extends Model
     protected $fillable = [
         'brigadier_id',
         'initiator_id',
-        'assignment_date',
-        'status',
-        'confirmed_at',
-        'rejected_at',
-        'rejection_reason',
-    ];
-
-    protected $casts = [
-        'assignment_date' => 'date',
-        'confirmed_at' => 'datetime',
-        'rejected_at' => 'datetime',
     ];
 
     // Связи
@@ -36,9 +25,18 @@ class BrigadierAssignment extends Model
         return $this->belongsTo(User::class, 'initiator_id');
     }
 
+    public function assignmentDates()
+    {
+        return $this->hasMany(BrigadierAssignmentDate::class);
+    }
+
+    public function confirmedDates()
+    {
+        return $this->hasMany(BrigadierAssignmentDate::class)->where('status', 'confirmed');
+    }
+
     public function workRequests()
     {
-        return $this->hasMany(WorkRequest::class, 'brigadier_id', 'brigadier_id')
-            ->whereDate('created_at', $this->assignment_date);
+        return $this->hasMany(WorkRequest::class, 'brigadier_id', 'brigadier_id');
     }
 }

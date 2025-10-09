@@ -100,4 +100,17 @@ class BrigadierAssignmentController extends Controller
 
         return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator']));
     }
+
+    // Добавьте этот метод в существующий BrigadierAssignmentController.php
+    public function myAssignments()
+    {
+        $userId = auth()->id();
+        
+        $assignments = BrigadierAssignment::where('initiator_id', $userId)
+            ->with(['brigadier', 'initiator'])
+            ->latest()
+            ->get();
+            
+        return BrigadierAssignmentResource::collection($assignments);
+    }
 }

@@ -12,33 +12,30 @@ import './App.css'
 
 // Компонент для редиректа на основе роли
 const RoleRedirect = () => {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   
-  console.log('RoleRedirect - user:', user)
+  console.log('=== ROLE REDIRECT ===')
+  console.log('Loading:', loading)
+  console.log('User:', user)
   
+  // Пока загружаем, показываем загрузку
+  if (loading) {
+    return <div>Загрузка...</div>
+  }
+  
+  // Если нет пользователя, на логин
   if (!user) {
     console.log('No user, redirecting to login')
     return <Navigate to="/login" replace />
   }
   
-  console.log('User roles:', user.roles)
-  
-  // ФИКС: Правильно получаем роль из объекта
-  let role = 'initiator'; // значение по умолчанию
-  
-  if (user.roles && user.roles.length > 0) {
-    // Роли приходят как массив объектов: [{id: 1, name: 'initiator', ...}]
-    role = user.roles[0].name;
-  }
-  
+  // Получаем роль
+  const role = user?.roles?.[0]?.name || 'initiator'
   console.log('Detected role:', role)
-
-  // ФИКС: Убедимся что role - строка
-  const roleString = String(role).toLowerCase();
-  console.log('Role string:', roleString);
-
-  switch(roleString) {
+  
+  switch(role.toLowerCase()) {
     case 'initiator':
+      console.log('Redirecting to initiator dashboard')
       return <Navigate to="/initiator/dashboard" replace />
     case 'executor':
       return <Navigate to="/executor/dashboard" replace />
@@ -47,7 +44,7 @@ const RoleRedirect = () => {
     case 'dispatcher':
       return <Navigate to="/dispatcher/dashboard" replace />
     default:
-      console.log('Unknown role, redirecting to initiator dashboard')
+      console.log('Unknown role, defaulting to initiator')
       return <Navigate to="/initiator/dashboard" replace />
   }
 }

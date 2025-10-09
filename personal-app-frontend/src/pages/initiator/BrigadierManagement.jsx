@@ -6,12 +6,15 @@ import DatePicker from 'react-datepicker';
 import { registerLocale, setDefaultLocale } from 'react-datepicker';
 import { ru } from 'date-fns/locale/ru';
 import 'react-datepicker/dist/react-datepicker.css';
+import { brigadierService } from '../../services/brigadierService';
+import { useAuth } from '../../context/AuthContext';
 
 // Регистрируем русскую локаль
 registerLocale('ru', ru);
 setDefaultLocale('ru');
 
 const BrigadierManagement = () => {
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState('date'); // 'date' или 'period'
   const [selectedDate, setSelectedDate] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -21,102 +24,107 @@ const BrigadierManagement = () => {
   const [selectedExecutor, setSelectedExecutor] = useState(null);
   const [assignmentComment, setAssignmentComment] = useState('');
   const [selectedDates, setSelectedDates] = useState([]);
-  
-  // Mock данные
-  const [assignments, setAssignments] = useState([
-    {
-      id: 1,
-      brigadier: { id: 2, name: 'Иван Петров', specialization: 'садовник' },
-      initiator: { id: 7, name: 'Бобкова Диана' },
-      dates: ['2025-10-08', '2025-10-10', '2025-10-15'],
-      status: 'pending',
-      comment: 'Работа на центральной клумбе',
-      createdAt: '2025-10-07T10:00:00Z'
-    },
-    {
-      id: 2,
-      brigadier: { id: 3, name: 'Мария Сидорова', specialization: 'декоратор' },
-      initiator: { id: 8, name: 'Другой Инициатор' },
-      dates: ['2025-10-09'],
-      status: 'confirmed',
-      comment: 'Оформление входа',
-      createdAt: '2025-10-06T14:30:00Z'
-    },
-    {
-      id: 3,
-      brigadier: { id: 4, name: 'Алексей Козлов', specialization: 'администратор' },
-      initiator: { id: 7, name: 'Бобкова Диана' },
-      dates: ['2025-10-08'],
-      status: 'rejected',
-      comment: 'Недоступен в этот день',
-      createdAt: '2025-10-05T09:15:00Z'
-    }
-  ]);
-
-  const [availableExecutors] = useState([
-    { id: 2, name: 'Иван Петров', specialization: 'садовник' },
-    { id: 3, name: 'Мария Сидорова', specialization: 'декоратор' },
-    { id: 4, name: 'Алексей Козлов', specialization: 'администратор' },
-    { id: 5, name: 'Ольга Новикова', specialization: 'садовник' },
-    { id: 6, name: 'Дмитрий Волков', specialization: 'помощник садовника' }
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [availableExecutors, setAvailableExecutors] = useState([]);
+  const [assignments, setAssignments] = useState([]);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     setSelectedDate(today);
-    
+
     // Устанавливаем период по умолчанию (текущая неделя)
     const start = new Date();
     const end = new Date();
     end.setDate(end.getDate() + 7);
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
+
+    loadAssignments();
+    loadAvailableExecutors();
   }, []);
 
+  const loadAssignments = async () => {
+    try {
+      setLoading(true);
+      const data = await brigadierService.getAssignments();
+      console.log('Loaded assignments:', data);
+      
+      // Правильно обрабатываем структуру ответа
+      let assignmentsArray = [];
+      if (Array.isArray(data)) {
+        assignmentsArray = data;
+      } else if (data && Array.isArray(data.data)) {
+        assignmentsArray = data.data;
+      }
+      
+      console.log('Assignments array:', assignmentsArray);
+      setAssignments(assignmentsArray);
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+      alert('Ошибка при загрузке назначений');
+      setAssignments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailableExecutors = async () => {
+    try {
+      const data = await brigadierService.getAllBrigadiers();
+      console.log('Loaded brigadiers:', data);
+      setAvailableExecutors(data);
+    } catch (error) {
+      console.error('Error loading executors:', error);
+      alert('Ошибка при загрузке списка бригадиров');
+    }
+  };
+
   // Фильтрация назначений
-  const filteredAssignments = assignments.filter(assignment => {
+  const filteredAssignments = (Array.isArray(assignments) ? assignments : assignments.data || 
+  []).filter(assignment => {
     // Фильтр по инициатору
-    if (filterMode === 'my' && assignment.initiator.id !== 7) {
+    if (filterMode === 'my' && assignment.initiator.id !== user.id) {
       return false;
     }
-    
-    // Фильтр по дате/периоду
-    if (viewMode === 'date' && selectedDate) {
-      return assignment.dates.includes(selectedDate);
-    } else if (viewMode === 'period' && startDate && endDate) {
-      return assignment.dates.some(date => 
-        date >= startDate && date <= endDate
-      );
-    }
-    
+
+    // TODO: Добавить фильтрацию по дате после обновления структуры БД
+    // Сейчас используем mock логику
     return true;
   });
 
-  const handleAssignBrigadier = () => {
+  const handleAssignBrigadier = async () => {
     if (!selectedExecutor || selectedDates.length === 0) return;
-    
-    const newAssignment = {
-      id: Date.now(),
-      brigadier: selectedExecutor,
-      initiator: { id: 7, name: 'Бобкова Диана' },
-      dates: selectedDates, // Используем выбранные даты из календаря
-      status: 'pending',
-      comment: assignmentComment,
-      createdAt: new Date().toISOString()
-    };
-    
-    setAssignments(prev => [...prev, newAssignment]);
-    setShowAssignmentModal(false);
-    setSelectedDates([]); // Очищаем выбранные даты
-    setAssignmentComment('');
-    setSelectedExecutor(null);
+
+    try {
+      // Создаем ОДНО назначение с ПЕРВОЙ выбранной датой
+      // TODO: Позже добавить поддержку множественных дат
+      const response = await brigadierService.createAssignment({
+        brigadier_id: selectedExecutor.id,
+        initiator_id: user.id,
+        assignment_date: selectedDates[0], // Берем первую дату
+        status: 'pending'
+      });
+
+      console.log('Assignment created:', response);
+      await loadAssignments(); // Перезагружаем список
+      
+      setShowAssignmentModal(false);
+      setSelectedDates([]);
+      setAssignmentComment('');
+      setSelectedExecutor(null);
+      
+      alert('Бригадир успешно назначен! Ожидает подтверждения.');
+    } catch (error) {
+      console.error('Error assigning brigadier:', error);
+      alert('Ошибка при назначении бригадира: ' + (error.response?.data?.error || error.message));
+    }
   };
 
   const handleOpenAssignmentModal = (executor = null, assignment = null) => {
     if (assignment) {
       // Режим редактирования
       setSelectedExecutor(assignment.brigadier);
-      setSelectedDates([...assignment.dates]);
+      // TODO: Загрузить даты из assignment.assignmentDates
       setAssignmentComment(assignment.comment);
     } else {
       // Режим создания
@@ -127,8 +135,17 @@ const BrigadierManagement = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleUnassignBrigadier = (assignmentId) => {
-    setAssignments(prev => prev.filter(a => a.id !== assignmentId));
+  const handleUnassignBrigadier = async (assignmentId) => {
+    if (window.confirm('Вы уверены, что хотите отменить назначение?')) {
+      try {
+        await brigadierService.deleteAssignment(assignmentId);
+        await loadAssignments(); // Перезагружаем список
+        alert('Назначение отменено');
+      } catch (error) {
+        console.error('Error deleting assignment:', error);
+        alert('Ошибка при отмене назначения');
+      }
+    }
   };
 
   // Функция для выбора даты
@@ -144,19 +161,6 @@ const BrigadierManagement = () => {
     });
   };
 
-  const getDatesInRange = (start, end) => {
-    const dates = [];
-    const current = new Date(start);
-    const endDate = new Date(end);
-    
-    while (current <= endDate) {
-      dates.push(current.toISOString().split('T')[0]);
-      current.setDate(current.getDate() + 1);
-    }
-    
-    return dates;
-  };
-
   const getStatusDisplay = (status) => {
     const statusMap = {
       'pending': '⏳ Ожидает',
@@ -169,7 +173,7 @@ const BrigadierManagement = () => {
   const getStatusColor = (status) => {
     const colors = {
       'pending': '#f39c12',
-      'confirmed': '#27ae60', 
+      'confirmed': '#27ae60',
       'rejected': '#e74c3c'
     };
     return colors[status] || '#7f8c8d';
@@ -178,6 +182,14 @@ const BrigadierManagement = () => {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('ru-RU');
   };
+
+  if (loading) {
+    return (
+      <div className="brigadier-management">
+        <div className="loading">Загрузка назначений...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="brigadier-management">
@@ -250,8 +262,8 @@ const BrigadierManagement = () => {
 
           <div className="control-group">
             <label>Фильтр:</label>
-            <select 
-              value={filterMode} 
+            <select
+              value={filterMode}
               onChange={(e) => setFilterMode(e.target.value)}
               className="filter-select"
             >
@@ -261,7 +273,7 @@ const BrigadierManagement = () => {
           </div>
         </div>
 
-        <button 
+        <button
           className="assign-new-btn"
           onClick={() => handleOpenAssignmentModal()}
         >
@@ -304,7 +316,7 @@ const BrigadierManagement = () => {
             <tr>
               <th>Бригадир</th>
               <th>Специализация</th>
-              <th>Даты назначения</th>
+              <th>Дата назначения</th>
               <th>Инициатор</th>
               <th>Статус</th>
               <th>Комментарий</th>
@@ -323,22 +335,16 @@ const BrigadierManagement = () => {
                 <tr key={assignment.id}>
                   <td>
                     <div className="brigadier-info">
-                      <strong>{assignment.brigadier.name}</strong>
+                      <strong>{assignment.brigadier?.name || 'N/A'}</strong>
                     </div>
                   </td>
-                  <td>{assignment.brigadier.specialization}</td>
+                  <td>{assignment.brigadier?.specialization || 'N/A'}</td>
                   <td>
-                    <div className="dates-list">
-                      {assignment.dates.map(date => (
-                        <span key={date} className="date-tag">
-                          {formatDate(date)}
-                        </span>
-                      ))}
-                    </div>
+                    {formatDate(assignment.assignment_date)}
                   </td>
-                  <td>{assignment.initiator.name}</td>
+                  <td>{assignment.initiator?.name || 'N/A'}</td>
                   <td>
-                    <span 
+                    <span
                       className="status-badge"
                       style={{backgroundColor: getStatusColor(assignment.status)}}
                     >
@@ -347,12 +353,12 @@ const BrigadierManagement = () => {
                   </td>
                   <td>
                     <div className="comment-cell">
-                      {assignment.comment}
+                      {assignment.rejection_reason || assignment.comment || '-'}
                     </div>
                   </td>
                   <td>
                     <div className="actions-cell">
-                      {assignment.initiator.id === 7 && (
+                      {assignment.initiator?.id === user.id && (
                         <button
                           onClick={() => handleUnassignBrigadier(assignment.id)}
                           className="action-btn delete-btn"
@@ -361,13 +367,6 @@ const BrigadierManagement = () => {
                           🗑️
                         </button>
                       )}
-                      <button
-                        onClick={() => handleOpenAssignmentModal(assignment.brigadier, assignment)}
-                        className="action-btn edit-btn"
-                        title="Изменить назначение"
-                      >
-                        ✏️
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -383,23 +382,23 @@ const BrigadierManagement = () => {
           <div className="modal">
             <div className="modal-header">
               <h3>
-                {selectedExecutor ? 
-                  (selectedDates.length > 0 ? 'Редактирование назначения' : 'Новое назначение') 
+                {selectedExecutor ?
+                  (selectedDates.length > 0 ? 'Редактирование назначения' : 'Новое назначение')
                   : 'Новое назначение'
                 }
               </h3>
-              <button 
+              <button
                 onClick={() => setShowAssignmentModal(false)}
                 className="close-btn"
               >
                 ×
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="form-group">
                 <label>Исполнитель:</label>
-                <select 
+                <select
                   value={selectedExecutor?.id || ''}
                   onChange={(e) => {
                     const executor = availableExecutors.find(ex => ex.id === parseInt(e.target.value));
@@ -440,7 +439,7 @@ const BrigadierManagement = () => {
                       {selectedDates.map(date => (
                         <span key={date} className="date-chip">
                           {formatDate(date)}
-                          <button 
+                          <button
                             onClick={() => setSelectedDates(prev => prev.filter(d => d !== date))}
                             className="remove-date"
                           >
@@ -466,13 +465,13 @@ const BrigadierManagement = () => {
             </div>
 
             <div className="modal-footer">
-              <button 
+              <button
                 onClick={() => setShowAssignmentModal(false)}
                 className="btn-cancel"
               >
                 Отмена
               </button>
-              <button 
+              <button
                 onClick={handleAssignBrigadier}
                 disabled={!selectedExecutor || selectedDates.length === 0}
                 className="btn-confirm"

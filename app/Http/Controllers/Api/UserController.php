@@ -80,4 +80,15 @@ class UserController extends Controller
         $users = User::role($role)->get();
         return UserResource::collection($users);
     }
+
+    // Новый метод для получения всех бригадиров
+    public function getBrigadiers()
+    {
+        // Показываем всех исполнителей (executor) как потенциальных бригадиров
+        $executors = User::role('executor')
+            ->select('id', 'name', 'email', 'specialization', 'phone')
+            ->get();
+        
+        return response()->json($executors);
+    }
 }

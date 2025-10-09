@@ -11,19 +11,19 @@ use Illuminate\Support\Facades\DB;
 
 class BrigadierController extends Controller
 {
-    // Получить доступных бригадиров для назначения
+    // Получить доступных бригадиров для назначения на дату
     public function availableBrigadiers(Request $request)
     {
         $date = $request->get('date', now()->format('Y-m-d'));
-        
-        $brigadiers = User::role('brigadier')
+
+        $brigadiers = User::role('executor')
             ->whereDoesntHave('brigadierAssignments', function($query) use ($date) {
                 $query->where('assignment_date', $date)
-                      ->where('status', 'confirmed');
+                    ->where('status', 'confirmed');
             })
-            ->select('id', 'name', 'email', 'specialization')
+            ->select('id', 'name', 'email', 'specialization', 'phone')
             ->get();
-            
+
         return response()->json($brigadiers);
     }
 
@@ -39,6 +39,16 @@ class BrigadierController extends Controller
         $brigadier = User::role('brigadier')->find($validated['brigadier_id']);
         if (!$brigadier) {
             return response()->json(['error' => 'Пользователь не является бригадиром'], 400);
+        }
+
+        // Проверяем, что бригадир доступен на эту дату
+        $existingAssignment = BrigadierAssignment::where('brigadier_id', $validated['brigadier_id'])
+            ->where('assignment_date', $validated['assignment_date'])
+            ->where('status', 'confirmed')
+            ->first();
+
+        if ($existingAssignment) {
+            return response()->json(['error' => 'Бригадир уже назначен на эту дату'], 400);
         }
 
         try {
