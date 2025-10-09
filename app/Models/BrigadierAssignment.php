@@ -27,12 +27,13 @@ class BrigadierAssignment extends Model
 
     public function assignmentDates()
     {
-        return $this->hasMany(BrigadierAssignmentDate::class);
+        // Явно указываем внешний ключ, т.к. в дочерней таблице он называется assignment_id
+        return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id');
     }
 
     public function confirmedDates()
     {
-        return $this->hasMany(BrigadierAssignmentDate::class)->where('status', 'confirmed');
+        return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id')->where('status', 'confirmed');
     }
 
     public function workRequests()

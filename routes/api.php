@@ -36,7 +36,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Brigadiers
     Route::get('/brigadiers/available', [BrigadierController::class, 'availableBrigadiers']);
-    Route::post('/brigadier-assignments', [BrigadierController::class, 'assignBrigadier']);
+    // Route::post('/brigadier-assignments', [BrigadierController::class, 'assignBrigadier']);
     
     // Brigadier Assignments
     Route::apiResource('brigadier-assignments', BrigadierAssignmentController::class);

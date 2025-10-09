@@ -8,6 +8,7 @@ import { ru } from 'date-fns/locale/ru';
 import 'react-datepicker/dist/react-datepicker.css';
 import { brigadierService } from '../../services/brigadierService';
 import { useAuth } from '../../context/AuthContext';
+import { format, parse } from 'date-fns';
 
 // Регистрируем русскую локаль
 registerLocale('ru', ru);
@@ -27,17 +28,18 @@ const BrigadierManagement = () => {
   const [loading, setLoading] = useState(true);
   const [availableExecutors, setAvailableExecutors] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [executorSearch, setExecutorSearch] = useState('');
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
     setSelectedDate(today);
 
     // Устанавливаем период по умолчанию (текущая неделя)
     const start = new Date();
     const end = new Date();
     end.setDate(end.getDate() + 7);
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
+    setStartDate(format(start, 'yyyy-MM-dd'));
+    setEndDate(format(end, 'yyyy-MM-dd'));
 
     loadAssignments();
     loadAvailableExecutors();
@@ -80,40 +82,112 @@ const BrigadierManagement = () => {
   };
 
   // Фильтрация назначений
-  const filteredAssignments = (Array.isArray(assignments) ? assignments : assignments.data || 
-  []).filter(assignment => {
+  const assignmentsSource = Array.isArray(assignments)
+    ? assignments
+    : (Array.isArray(assignments?.data) ? assignments.data : []);
+  const normalizeDateToYmd = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      // Часто приходит ISO: 2025-10-09T00:00:00Z → берём первые 10 символов
+      if (value.length >= 10 && /\d{4}-\d{2}-\d{2}/.test(value.slice(0, 10))) {
+        return value.slice(0, 10);
+      }
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) return format(d, 'yyyy-MM-dd');
+      return '';
+    }
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return format(value, 'yyyy-MM-dd');
+    }
+    return '';
+  };
+  const getAssignmentYmd = (assignment) => {
+    // пробуем разные возможные поля даты
+    const raw = (typeof assignment?.assignment_date !== 'undefined' && assignment.assignment_date !== null)
+      ? assignment.assignment_date
+      : (typeof assignment?.assignmentDate !== 'undefined' && assignment.assignmentDate !== null)
+        ? assignment.assignmentDate
+        : (typeof assignment?.date !== 'undefined' && assignment.date !== null)
+          ? assignment.date
+          : undefined;
+    return normalizeDateToYmd(raw);
+  };
+
+  const getAssignmentDates = (assignment) => {
+    const datesArray = Array.isArray(assignment?.assignment_dates)
+      ? assignment.assignment_dates
+      : [];
+    const single = getAssignmentYmd(assignment);
+    const combined = single ? [single, ...datesArray] : datesArray;
+    return Array.from(new Set(combined.map(normalizeDateToYmd).filter(Boolean)));
+  };
+  const isWithinSelectedRange = (assignmentDates) => {
+    const dates = assignmentDates;
+    if (!dates || dates.length === 0) return false;
+    if (viewMode === 'date') {
+      return dates.some(d => d === selectedDate);
+    }
+    // period mode
+    if (!startDate || !endDate) return true;
+    return dates.some(d => d >= startDate && d <= endDate);
+  };
+
+  const filteredAssignments = assignmentsSource.filter(assignment => {
     // Фильтр по инициатору
-    if (filterMode === 'my' && assignment.initiator.id !== user.id) {
+    if (filterMode === 'my' && (assignment.initiator?.id !== user?.id)) {
       return false;
     }
 
-    // TODO: Добавить фильтрацию по дате после обновления структуры БД
-    // Сейчас используем mock логику
-    return true;
+    // Фильтрация по дате/периоду (учитываем ISO с временем)
+    return isWithinSelectedRange(getAssignmentDates(assignment));
   });
 
   const handleAssignBrigadier = async () => {
     if (!selectedExecutor || selectedDates.length === 0) return;
 
     try {
-      // Создаем ОДНО назначение с ПЕРВОЙ выбранной датой
-      // TODO: Позже добавить поддержку множественных дат
-      const response = await brigadierService.createAssignment({
+      // Предотвращение конфликтов: бригадир не может выходить как Исполнитель и не может быть назначен бригадиром дважды на одну дату
+      // Здесь проверяем только конфликты по уже загруженным назначениям
+      const buildKey = (brigadierId, initiatorId, dateYmd) => `${brigadierId}|${initiatorId}|${dateYmd}`;
+      const alreadyAssignedKeys = new Set(
+        assignmentsSource
+          .filter(a => a.brigadier?.id != null && a.initiator?.id != null)
+          .flatMap(a => {
+            const dates = getAssignmentDates(a);
+            return dates.map(d => buildKey(a.brigadier.id, a.initiator.id, d));
+          })
+      );
+
+      const uniqueDates = Array.from(new Set(selectedDates)).sort();
+      const candidateKeys = uniqueDates.map(d => buildKey(selectedExecutor.id, user.id, d));
+      const datesToCreate = uniqueDates.filter((d, idx) => !alreadyAssignedKeys.has(candidateKeys[idx]));
+      const conflictedDates = uniqueDates.filter((d, idx) => alreadyAssignedKeys.has(candidateKeys[idx]));
+
+      // Создаём одно назначение на сразу все выбранные даты
+      const payload = {
         brigadier_id: selectedExecutor.id,
         initiator_id: user.id,
-        assignment_date: selectedDates[0], // Берем первую дату
+        assignment_dates: datesToCreate,
+        comment: assignmentComment || undefined,
         status: 'pending'
-      });
+      };
+      console.info('[BrigadierManagement] creating assignment with payload:', payload);
+      await brigadierService.createAssignment(payload);
 
-      console.log('Assignment created:', response);
-      await loadAssignments(); // Перезагружаем список
+      await loadAssignments();
       
       setShowAssignmentModal(false);
       setSelectedDates([]);
       setAssignmentComment('');
       setSelectedExecutor(null);
       
-      alert('Бригадир успешно назначен! Ожидает подтверждения.');
+      if (conflictedDates.length > 0 && datesToCreate.length > 0) {
+        alert(`Часть дат пропущена из-за конфликтов: ${conflictedDates.join(', ')}. Остальные назначения созданы и ожидают подтверждения.`);
+      } else if (conflictedDates.length > 0 && datesToCreate.length === 0) {
+        alert(`Назначения не созданы: выбранные даты уже заняты для этого бригадира (${conflictedDates.join(', ')}).`);
+      } else {
+        alert('Бригадир успешно назначен на выбранные даты! Ожидает подтверждения.');
+      }
     } catch (error) {
       console.error('Error assigning brigadier:', error);
       alert('Ошибка при назначении бригадира: ' + (error.response?.data?.error || error.message));
@@ -132,6 +206,7 @@ const BrigadierManagement = () => {
       setSelectedDates([]);
       setAssignmentComment('');
     }
+    setExecutorSearch('');
     setShowAssignmentModal(true);
   };
 
@@ -150,7 +225,7 @@ const BrigadierManagement = () => {
 
   // Функция для выбора даты
   const handleDateClick = (date) => {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = format(date, 'yyyy-MM-dd');
     setSelectedDates(prev => {
       const isSelected = prev.includes(dateString);
       if (isSelected) {
@@ -180,6 +255,12 @@ const BrigadierManagement = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const ymdRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (ymdRegex.test(dateString)) {
+      const parsed = parse(dateString, 'yyyy-MM-dd', new Date());
+      return format(parsed, 'dd.MM.yyyy');
+    }
     return new Date(dateString).toLocaleDateString('ru-RU');
   };
 
@@ -340,7 +421,17 @@ const BrigadierManagement = () => {
                   </td>
                   <td>{assignment.brigadier?.specialization || 'N/A'}</td>
                   <td>
-                    {formatDate(assignment.assignment_date)}
+                    {(() => {
+                      const dates = getAssignmentDates(assignment);
+                      if (dates.length === 0) return '-';
+                      return (
+                        <div className="dates-chips-inline">
+                          {dates.map(d => (
+                            <span key={d} className="date-chip small">{formatDate(d)}</span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>{assignment.initiator?.name || 'N/A'}</td>
                   <td>
@@ -358,7 +449,7 @@ const BrigadierManagement = () => {
                   </td>
                   <td>
                     <div className="actions-cell">
-                      {assignment.initiator?.id === user.id && (
+                      {assignment.initiator?.id === user?.id && (
                         <button
                           onClick={() => handleUnassignBrigadier(assignment.id)}
                           className="action-btn delete-btn"
@@ -398,18 +489,33 @@ const BrigadierManagement = () => {
             <div className="modal-body">
               <div className="form-group">
                 <label>Исполнитель:</label>
+                <input
+                  type="text"
+                  value={executorSearch}
+                  onChange={(e) => setExecutorSearch(e.target.value)}
+                  placeholder="Поиск по ФИО или специализации"
+                  className="form-input"
+                />
                 <select
                   value={selectedExecutor?.id || ''}
                   onChange={(e) => {
-                    const executor = availableExecutors.find(ex => ex.id === parseInt(e.target.value));
+                    const executor = availableExecutors.find(ex => ex.id === parseInt(e.target.value, 10));
                     setSelectedExecutor(executor);
                   }}
                   className="form-select"
                 >
                   <option value="">Выберите исполнителя</option>
-                  {availableExecutors.map(executor => (
+                  {(Array.isArray(availableExecutors) ? availableExecutors : []).filter(ex => {
+                    if (!executorSearch) return true;
+                    const q = executorSearch.toLowerCase().trim();
+                    const name = String(ex.name || '').toLowerCase();
+                    const spec = Array.isArray(ex.specialization)
+                      ? ex.specialization.join(' ').toLowerCase()
+                      : String(ex.specialization || '').toLowerCase();
+                    return name.includes(q) || spec.includes(q);
+                  }).map(executor => (
                     <option key={executor.id} value={executor.id}>
-                      {executor.name} ({executor.specialization})
+                      {executor.name} ({Array.isArray(executor.specialization) ? executor.specialization.join(', ') : executor.specialization})
                     </option>
                   ))}
                 </select>
@@ -425,7 +531,7 @@ const BrigadierManagement = () => {
                     locale="ru"
                     monthsShown={2}
                     dayClassName={(date) => {
-                      const dateString = date.toISOString().split('T')[0];
+                      const dateString = format(date, 'yyyy-MM-dd');
                       return selectedDates.includes(dateString) ? 'selected-date' : '';
                     }}
                   />

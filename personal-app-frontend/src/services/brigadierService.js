@@ -29,10 +29,26 @@ export const brigadierService = {
     // Создать назначение бригадира
     async createAssignment(assignmentData) {
         try {
+            // Диагностическое логирование запроса
+            console.info('[brigadierService.createAssignment] POST /api/brigadier-assignments payload:', assignmentData);
             const response = await api.post('/api/brigadier-assignments', assignmentData);
+            console.info('[brigadierService.createAssignment] Response:', {
+                status: response.status,
+                data: response.data
+            });
             return response.data;
         } catch (error) {
-            console.error('Error in createAssignment:', error);
+            // Расширенное диагностическое логирование ошибок
+            const status = error?.response?.status;
+            const data = error?.response?.data;
+            const headers = error?.response?.headers;
+            const config = error?.config ? {
+                url: error.config.url,
+                method: error.config.method,
+                headers: error.config.headers,
+                data: error.config.data
+            } : undefined;
+            console.error('[brigadierService.createAssignment] Error:', { status, data, headers, config, message: error?.message });
             throw error;
         }
     },

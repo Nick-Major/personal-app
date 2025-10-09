@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrigadierAssignmentResource;
 use App\Models\BrigadierAssignment;
+use App\Models\BrigadierAssignmentDate;
 use Illuminate\Http\Request;
 
 class BrigadierAssignmentController extends Controller
 {
     public function index()
     {
-        $assignments = BrigadierAssignment::with(['brigadier', 'initiator'])->get();
+        $assignments = BrigadierAssignment::with(['brigadier', 'initiator', 'assignmentDates'])->get();
         return BrigadierAssignmentResource::collection($assignments);
     }
 
@@ -20,17 +21,53 @@ class BrigadierAssignmentController extends Controller
         $validated = $request->validate([
             'brigadier_id' => 'required|exists:users,id',
             'initiator_id' => 'required|exists:users,id',
-            'assignment_date' => 'required|date',
+            // поддерживаем либо одну дату, либо массив дат
+            'assignment_date' => 'nullable|date',
+            'assignment_dates' => 'nullable|array',
+            'assignment_dates.*' => 'date',
             'status' => 'sometimes|in:pending,confirmed,rejected',
         ]);
 
-        $assignment = BrigadierAssignment::create($validated);
-        return new BrigadierAssignmentResource($assignment->load(['brigadier', 'initiator']));
+        $dates = [];
+        if (!empty($validated['assignment_dates'])) {
+            $dates = $validated['assignment_dates'];
+        } elseif (!empty($validated['assignment_date'])) {
+            $dates = [$validated['assignment_date']];
+        } else {
+            return response()->json(['error' => 'assignment_date(s) required'], 422);
+        }
+
+        // Используем существующее назначение для пары (brigadier_id, initiator_id) или создаём новое,
+        // чтобы не нарушать уникальный индекс на таблице назначений
+        $assignment = BrigadierAssignment::firstOrCreate([
+            'brigadier_id' => $validated['brigadier_id'],
+            'initiator_id' => $validated['initiator_id'],
+        ]);
+
+        $status = $validated['status'] ?? 'pending';
+        $uniqueDates = collect($dates)
+            ->map(fn($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+            ->unique()
+            ->values();
+
+        foreach ($uniqueDates as $date) {
+            BrigadierAssignmentDate::firstOrCreate(
+                [
+                    'assignment_id' => $assignment->id,
+                    'assignment_date' => $date,
+                ],
+                [
+                    'status' => $status,
+                ]
+            );
+        }
+
+        return new BrigadierAssignmentResource($assignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
     public function show(BrigadierAssignment $brigadierAssignment)
     {
-        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator']));
+        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
     public function update(Request $request, BrigadierAssignment $brigadierAssignment)
@@ -57,7 +94,7 @@ class BrigadierAssignmentController extends Controller
         }
 
         $brigadierAssignment->update($validated);
-        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator']));
+        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
     public function destroy(BrigadierAssignment $brigadierAssignment)
@@ -69,7 +106,7 @@ class BrigadierAssignmentController extends Controller
     public function byBrigadier($brigadierId)
     {
         $assignments = BrigadierAssignment::where('brigadier_id', $brigadierId)
-            ->with(['brigadier', 'initiator'])
+            ->with(['brigadier', 'initiator', 'assignmentDates'])
             ->get();
         return BrigadierAssignmentResource::collection($assignments);
     }
@@ -82,7 +119,7 @@ class BrigadierAssignmentController extends Controller
             'rejected_at' => null,
         ]);
 
-        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator']));
+        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
     public function reject(BrigadierAssignment $brigadierAssignment, Request $request)
@@ -98,7 +135,7 @@ class BrigadierAssignmentController extends Controller
             'rejection_reason' => $validated['rejection_reason'],
         ]);
 
-        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator']));
+        return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
     // Добавьте этот метод в существующий BrigadierAssignmentController.php
@@ -107,7 +144,7 @@ class BrigadierAssignmentController extends Controller
         $userId = auth()->id();
         
         $assignments = BrigadierAssignment::where('initiator_id', $userId)
-            ->with(['brigadier', 'initiator'])
+            ->with(['brigadier', 'initiator', 'assignmentDates'])
             ->latest()
             ->get();
             
