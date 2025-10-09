@@ -3,10 +3,21 @@
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
+.request-form-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* gap: 20px; */
+  overflow: hidden;
 }
 
 .page-header {
-  margin-bottom: 30px;
+  margin-bottom: 0;
   padding-bottom: 20px;
   border-bottom: 1px solid #e9ecef;
 }
@@ -25,12 +36,6 @@
   font-weight: 600;
 }
 
-.page-header p {
-  color: #7f8c8d;
-  margin: 0;
-  font-size: 16px;
-}
-
 .back-link {
   color: #3498db;
   text-decoration: none;
@@ -46,12 +51,61 @@
   color: white;
 }
 
+/* Правила формирования заявки */
+.formation-rules {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 0;
+}
+
+.formation-rules h3 {
+  color: #2c3e50;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.formation-rules ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #5a6c7d;
+}
+
+.formation-rules li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
 /* Форма */
 .request-form {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  max-height: 100%;
+}
+
+/* Кастомный скроллбар */
+.request-form::-webkit-scrollbar {
+  width: 8px;
+}
+
+.request-form::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 0 12px 12px 0;
+}
+
+.request-form::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.request-form::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .form-section {
@@ -75,7 +129,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   margin-bottom: 20px;
 }
@@ -96,11 +150,6 @@
   font-size: 14px;
 }
 
-.form-group label::after {
-  content: '';
-  margin-left: 2px;
-}
-
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -111,6 +160,8 @@
   font-family: inherit;
   transition: all 0.3s ease;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -119,6 +170,21 @@
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Стили для ошибок */
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
 }
 
 .form-group input:read-only {
@@ -161,33 +227,6 @@
   border-left: 3px solid #ffc107;
 }
 
-/* Правила формирования заявки */
-.formation-rules {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-}
-
-.formation-rules h3 {
-  color: #2c3e50;
-  margin: 0 0 15px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.formation-rules ul {
-  margin: 0;
-  padding-left: 20px;
-  color: #5a6c7d;
-}
-
-.formation-rules li {
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
 /* Кнопки действий */
 .form-actions {
   padding: 30px;
@@ -197,6 +236,10 @@
   justify-content: space-between;
   align-items: center;
   gap: 15px;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  z-index: 10;
 }
 
 .btn-primary {
@@ -244,17 +287,6 @@
   transform: translateY(-1px);
 }
 
-/* Валидация */
-.form-group input:invalid:not(:focus):not(:placeholder-shown),
-.form-group select:invalid:not(:focus) {
-  border-color: #e74c3c;
-}
-
-.form-group input:valid:not(:focus):not(:placeholder-shown),
-.form-group select:valid:not(:focus) {
-  border-color: #27ae60;
-}
-
 /* Стили для числовых полей - убираем стрелки */
 input[type="number"] {
   appearance: textfield;
@@ -293,6 +325,7 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 768px) {
   .create-request-page {
     padding: 15px;
+    height: calc(100vh - 80px);
   }
   
   .header-content {
@@ -321,6 +354,10 @@ input[type="number"]::-webkit-inner-spin-button {
     width: 100%;
     min-width: auto;
   }
+  
+  .formation-rules {
+    padding: 15px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -339,10 +376,13 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 }
 
-/* Специфические стили для типов полей */
-input[type="date"],
-input[type="time"] {
-  cursor: pointer;
+/* Специфические стили для select времени */
+.form-group select[name="time"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
 }
 
 /* Подсказки для полей */
@@ -352,31 +392,30 @@ input[type="time"] {
   margin-top: 4px;
 }
 
-/* Состояние загрузки */
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255,255,255,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  z-index: 10;
+/* Улучшенная визуализация для лучшего UX */
+.form-group:focus-within label {
+  color: #3498db;
 }
 
-.loading-spinner {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+/* Плавное появление ошибок */
+.error-message {
+  animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ховер-эффекты для лучшей интерактивности */
+.form-group input:not(:read-only):not(:disabled):hover,
+.form-group select:not(:disabled):hover,
+.form-group textarea:not(:read-only):hover {
+  border-color: #bdc3c7;
 }

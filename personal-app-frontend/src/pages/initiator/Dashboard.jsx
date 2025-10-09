@@ -72,9 +72,6 @@ const InitiatorDashboard = () => {
       {/* Header */}
       <div className="dashboard-header">
         <h1>Личный кабинет Инициатора</h1>
-        <Link to="/initiator/create-request" className="btn-primary">
-          + Создать заявку
-        </Link>
       </div>
 
       {/* Stats Cards */}
