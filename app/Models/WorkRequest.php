@@ -14,6 +14,8 @@ class WorkRequest extends Model
         'initiator_id',
         'brigadier_id',
         'specialization',
+        'specialty_id',
+        'work_type_id',
         'executor_type',
         'workers_count',
         'shift_duration',
@@ -52,12 +54,22 @@ class WorkRequest extends Model
 
     public function shifts()
     {
-        return $this->hasMany(Shift::class);
+        return $this->hasMany(Shift::class, 'request_id');
     }
 
     public function brigadierAssignment()
     {
         return $this->hasOne(BrigadierAssignment::class, 'brigadier_id', 'brigadier_id')
             ->whereDate('assignment_date', $this->created_at->toDateString());
+    }
+
+    public function specialty()
+    {
+        return $this->belongsTo(Specialty::class);
+    }
+
+    public function workType()
+    {
+        return $this->belongsTo(WorkType::class);
     }
 }

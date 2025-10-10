@@ -19,7 +19,10 @@ class ContractorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'contact_person' => 'required|string|max:255',
+            'contact_person' => 'sometimes|string|max:255',
+            'contact_person_name' => 'sometimes|string|max:255',
+            'contact_person_phone' => 'sometimes|string|max:255',
+            'contact_person_email' => 'sometimes|email',
             'phone' => 'required|string|max:255',
             'email' => 'required|email',
             'specializations' => 'required|array',
@@ -40,6 +43,9 @@ class ContractorController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'contact_person' => 'sometimes|string|max:255',
+            'contact_person_name' => 'sometimes|string|max:255',
+            'contact_person_phone' => 'sometimes|string|max:255',
+            'contact_person_email' => 'sometimes|email',
             'phone' => 'sometimes|string|max:255',
             'email' => 'sometimes|email',
             'specializations' => 'sometimes|array',

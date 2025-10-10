@@ -11,7 +11,7 @@ class ShiftController extends Controller
 {
     public function index()
     {
-        $shifts = Shift::with(['workRequest', 'user', 'contractor'])->get();
+        $shifts = Shift::with(['workRequest', 'user', 'contractor', 'specialty', 'workType'])->get();
         return ShiftResource::collection($shifts);
     }
 
@@ -27,6 +27,8 @@ class ShiftController extends Controller
             'end_time' => 'nullable|date_format:H:i',
             'status' => 'sometimes|in:scheduled,started,completed,cancelled,no_show',
             'notes' => 'nullable|string',
+            'specialty_id' => 'nullable|exists:specialties,id',
+            'work_type_id' => 'nullable|exists:work_types,id',
         ]);
 
         // Проверяем, что указан либо user_id, либо contractor_id
@@ -37,7 +39,7 @@ class ShiftController extends Controller
         }
 
         $shift = Shift::create($validated);
-        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor']));
+        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor', 'specialty', 'workType']));
     }
 
     public function show(Shift $shift)
@@ -59,6 +61,8 @@ class ShiftController extends Controller
             'shift_started_at' => 'nullable|date',
             'shift_ended_at' => 'nullable|date',
             'notes' => 'nullable|string',
+            'specialty_id' => 'nullable|exists:specialties,id',
+            'work_type_id' => 'nullable|exists:work_types,id',
         ]);
 
         // Автоматически устанавливаем временные метки при изменении статуса
@@ -71,7 +75,7 @@ class ShiftController extends Controller
         }
 
         $shift->update($validated);
-        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor']));
+        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor', 'specialty', 'workType']));
     }
 
     public function destroy(Shift $shift)
@@ -95,7 +99,7 @@ class ShiftController extends Controller
             'shift_started_at' => now(),
         ]);
 
-        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor']));
+        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor', 'specialty', 'workType']));
     }
 
     public function complete(Shift $shift)
@@ -105,6 +109,6 @@ class ShiftController extends Controller
             'shift_ended_at' => now(),
         ]);
 
-        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor']));
+        return new ShiftResource($shift->load(['workRequest', 'user', 'contractor', 'specialty', 'workType']));
     }
 }
