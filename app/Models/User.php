@@ -14,13 +14,16 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'surname',
+        'patronymic',
         'email',
         'password',
         'phone',
-        'specialization',
+        'telegram_id',
         'is_contractor',
         'contractor_id',
         'notes',
+        'is_always_brigadier', // для спецов, которые всегда бригадиры
     ];
 
     protected $hidden = [
@@ -34,13 +37,21 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_contractor' => 'boolean',
+            'is_always_brigadier' => 'boolean',
         ];
     }
 
-    // Связи
+    // === СВЯЗИ ===
     public function contractor()
     {
         return $this->belongsTo(Contractor::class);
+    }
+
+    public function specialties()
+    {
+        return $this->belongsToMany(Specialty::class, 'user_specialties')
+                    ->withPivot('base_hourly_rate')
+                    ->withTimestamps();
     }
 
     public function initiatedRequests()
@@ -73,6 +84,11 @@ class User extends Authenticatable
         return $this->hasMany(Shift::class);
     }
 
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
     public function grantedInitiatorRights()
     {
         return $this->hasMany(InitiatorGrant::class, 'brigadier_id');
@@ -81,5 +97,40 @@ class User extends Authenticatable
     public function givenInitiatorRights()
     {
         return $this->hasMany(InitiatorGrant::class, 'initiator_id');
+    }
+
+    // === SCOPES ===
+    public function scopeBrigadiers($query)
+    {
+        return $query->whereHas('brigadierAssignments', function($q) {
+            $q->whereHas('assignmentDates', function($q) {
+                $q->where('status', 'confirmed');
+            });
+        })->orWhere('is_always_brigadier', true);
+    }
+
+    public function scopeAvailable($query, $date)
+    {
+        return $query->whereDoesntHave('shifts', function($q) use ($date) {
+            $q->whereDate('work_date', $date)
+              ->whereIn('status', ['active', 'completed']);
+        });
+    }
+
+    // === МЕТОДЫ ===
+    public function getFullNameAttribute()
+    {
+        return trim("{$this->surname} {$this->name} {$this->patronymic}");
+    }
+
+    public function canCreateRequests($date)
+    {
+        return $this->brigadierAssignments()
+            ->whereHas('assignmentDates', function($q) use ($date) {
+                $q->whereDate('assignment_date', $date)
+                  ->where('status', 'confirmed');
+            })
+            ->where('can_create_requests', true)
+            ->exists();
     }
 }

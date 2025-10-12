@@ -1,128 +1,162 @@
 // personal-app-frontend/src/pages/initiator/CreateRequest.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 import './CreateRequest.css';
 
 // Добавим функцию для генерации времени с шагом 5 минут
-  const generateTimeOptions = () => {
-    const times = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 5) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        times.push(timeString);
-      }
+const generateTimeOptions = () => {
+  const times = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 5) {
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      times.push(timeString);
     }
-    return times;
-  };
+  }
+  return times;
+};
 
 const CreateRequest = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    // Основная информация
-    date: '',
-    time: '08:00',
-    duration: 8,
-    workersCount: 1,
+    // Основная информация (новый формат)
+    work_date: '',
+    start_time: '08:00',
+    shift_duration: 8,
+    workers_count: 1,
     
     // Организационные данные
-    address: '',
-    brigadierId: '',
-    contactPerson: '',
-    comment: '',
+    brigadier_id: '',
+    comments: '',
     
-    // Рабочие параметры
-    specialization: '',
-    executorType: '',
-    workType: '',
+    // Рабочие параметры (новый формат)
+    specialty_id: '',
+    executor_type: 'our_staff',
+    work_type_id: '',
     
     // Финансовые атрибуты
     project: '',
     purpose: '',
-    payerCompany: ''
+    payer_company: ''
   });
 
   const [availableBrigadiers, setAvailableBrigadiers] = useState([]);
-  const [showContactPerson, setShowContactPerson] = useState(false);
+  const [specialties, setSpecialties] = useState([]);
+  const [workTypes, setWorkTypes] = useState([]);
   const [availableExecutorTypes, setAvailableExecutorTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [timeOptions] = useState(generateTimeOptions());
+  const [loading, setLoading] = useState(false);
 
   // Списки для select'ов
-  const specializations = [
-    'администраторы', 'декораторы', 'помощник садовника', 'садовники',
-    'садовники (хим. обработка)', 'специалисты по озеленению', 'старшие администраторы',
-    'старшие декораторы', 'старшие садовники', 'установщик деревьев', 'штатные специалисты'
-  ];
-
-  const workTypes = [
-    'высотные работы', 'демонтажные работы', 'другое', 'монтажные работы',
-    'обработка удобрениями', 'погрузочно-разгрузочные работы', 'полив растений',
-    'посадка растений', 'работы по уходу за растениями', 'разгрузка деревьев',
-    'установка деревьев', 'установка заборов'
-  ];
-
   const projects = [
     'Озеленение парка', 'Благоустройство территории', 'Сезонные работы', 'Специальный проект'
   ];
 
+  // Загрузка данных при монтировании
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      // Загружаем специальности
+      const specialtiesResponse = await api.get('/api/specialties');
+      setSpecialties(specialtiesResponse.data);
+      
+      // Загружаем виды работ
+      const workTypesResponse = await api.get('/api/work-types');
+      setWorkTypes(workTypesResponse.data);
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      // Fallback на mock данные если API недоступно
+      setSpecialties([
+        { id: 1, name: 'администраторы' },
+        { id: 2, name: 'декораторы' },
+        { id: 3, name: 'помощник садовника' },
+        { id: 4, name: 'садовники' },
+        { id: 5, name: 'садовники (хим. обработка)' },
+        { id: 6, name: 'специалисты по озеленению' },
+        { id: 7, name: 'старшие администраторы' },
+        { id: 8, name: 'старшие декораторы' },
+        { id: 9, name: 'старшие садовники' },
+        { id: 10, name: 'установщик деревьев' },
+        { id: 11, name: 'штатные специалисты' }
+      ]);
+      
+      setWorkTypes([
+        { id: 1, name: 'высотные работы' },
+        { id: 2, name: 'демонтажные работы' },
+        { id: 3, name: 'другое' },
+        { id: 4, name: 'монтажные работы' },
+        { id: 5, name: 'обработка удобрениями' },
+        { id: 6, name: 'погрузочно-разгрузочные работы' },
+        { id: 7, name: 'полив растений' },
+        { id: 8, name: 'посадка растений' },
+        { id: 9, name: 'работы по уходу за растениями' },
+        { id: 10, name: 'разгрузка деревьев' },
+        { id: 11, name: 'установка деревьев' },
+        { id: 12, name: 'установка заборов' }
+      ]);
+    }
+  };
+
   // Загрузка доступных бригадиров на выбранную дату
   useEffect(() => {
-    if (formData.date) {
-      // TODO: API call для получения подтверждённых бригадиров на дату
-      const mockBrigadiers = [
-        { id: 1, name: 'Иван Петров (садовник)', specialization: 'садовник', status: 'confirmed' },
-        { id: 2, name: 'Мария Сидорова (декоратор)', specialization: 'декоратор', status: 'confirmed' },
-        { id: 3, name: 'Контактное лицо' }
-      ];
-      
-      // Фильтруем только подтверждённых бригадиров
-      const confirmedBrigadiers = mockBrigadiers.filter(b => 
-        b.id === 3 || b.status === 'confirmed'
-      );
-      
-      setAvailableBrigadiers(confirmedBrigadiers);
+    if (formData.work_date) {
+      loadAvailableBrigadiers(formData.work_date);
     } else {
       setAvailableBrigadiers([]);
     }
-  }, [formData.date]);
+  }, [formData.work_date]);
+
+  const loadAvailableBrigadiers = async (date) => {
+    try {
+      const response = await api.get('/api/brigadiers/available', {
+        params: { date }
+      });
+      setAvailableBrigadiers(response.data);
+    } catch (error) {
+      console.error('Ошибка загрузки бригадиров:', error);
+      // Fallback на mock данные
+      const mockBrigadiers = [
+        { id: 1, name: 'Иван Петров', surname: 'Петров', specialization: 'садовник' },
+        { id: 2, name: 'Мария', surname: 'Сидорова', specialization: 'декоратор' },
+        { id: 9, name: 'Сергей', surname: 'Иванов', specialization: 'администратор' }
+      ];
+      setAvailableBrigadiers(mockBrigadiers);
+    }
+  };
 
   // Автоматическое определение доступных типов исполнителей
   useEffect(() => {
-    if (formData.specialization) {
+    if (formData.specialty_id) {
       // TODO: API call для проверки доступности исполнителей
       const types = ['our_staff'];
-      if (formData.specialization.includes('садовник')) {
+      const selectedSpecialty = specialties.find(s => s.id == formData.specialty_id);
+      if (selectedSpecialty && selectedSpecialty.name.includes('садовник')) {
         types.push('contractor');
       }
       setAvailableExecutorTypes(types);
       
-      if (formData.executorType && !types.includes(formData.executorType)) {
-        setFormData(prev => ({ ...prev, executorType: '' }));
+      if (formData.executor_type && !types.includes(formData.executor_type)) {
+        setFormData(prev => ({ ...prev, executor_type: '' }));
       }
     } else {
       setAvailableExecutorTypes([]);
     }
-  }, [formData.specialization]);
+  }, [formData.specialty_id, specialties]);
 
   // Автоматическое заполнение компании-плательщика
   useEffect(() => {
     if (formData.project && formData.purpose) {
-      // TODO: Логика определения компании-плательщика
       setFormData(prev => ({ 
         ...prev, 
-        payerCompany: `ООО "${formData.project} Финанс"`
+        payer_company: `ООО "${formData.project} Финанс"`
       }));
     }
   }, [formData.project, formData.purpose]);
-
-  const handleBrigadierChange = (e) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, brigadierId: value }));
-    setShowContactPerson(value === '3');
-    if (value === '3') {
-      setFormData(prev => ({ ...prev, contactPerson: '' }));
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -136,15 +170,14 @@ const CreateRequest = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.date) newErrors.date = 'Укажите дату работ';
-    if (!formData.time) newErrors.time = 'Укажите время начала';
-    if (!formData.duration || formData.duration < 1) newErrors.duration = 'Укажите продолжительность';
-    if (!formData.workersCount || formData.workersCount < 1) newErrors.workersCount = 'Укажите количество исполнителей';
-    if (!formData.address) newErrors.address = 'Укажите адрес';
-    if (!formData.brigadierId && !formData.contactPerson) newErrors.brigadierId = 'Выберите бригадира или укажите контактное лицо';
-    if (!formData.specialization) newErrors.specialization = 'Выберите специальность';
-    if (!formData.executorType) newErrors.executorType = 'Выберите тип исполнителя';
-    if (!formData.workType) newErrors.workType = 'Выберите вид работ';
+    if (!formData.work_date) newErrors.work_date = 'Укажите дату работ';
+    if (!formData.start_time) newErrors.start_time = 'Укажите время начала';
+    if (!formData.shift_duration || formData.shift_duration < 1) newErrors.shift_duration = 'Укажите продолжительность';
+    if (!formData.workers_count || formData.workers_count < 1) newErrors.workers_count = 'Укажите количество исполнителей';
+    if (!formData.brigadier_id) newErrors.brigadier_id = 'Выберите бригадира';
+    if (!formData.specialty_id) newErrors.specialty_id = 'Выберите специальность';
+    if (!formData.executor_type) newErrors.executor_type = 'Выберите тип исполнителя';
+    if (!formData.work_type_id) newErrors.work_type_id = 'Выберите вид работ';
     if (!formData.project) newErrors.project = 'Выберите проект';
     if (!formData.purpose) newErrors.purpose = 'Укажите назначение';
 
@@ -152,31 +185,56 @@ const CreateRequest = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
     if (!validateForm()) {
+      setLoading(false);
       return;
     }
 
-    // TODO: API call для публикации заявки
-    console.log('Публикация заявки:', formData);
-    
-    // Показываем успешное сообщение
-    alert('Заявка успешно опубликована!');
-    navigate('/initiator/requests');
+    try {
+      // Добавляем статус по умолчанию
+      const submitData = {
+        ...formData,
+        status: 'published' // или 'draft' для черновика
+      };
+
+      await api.post('/api/work-requests', submitData);
+      alert('Заявка успешно опубликована!');
+      navigate('/initiator/requests');
+    } catch (error) {
+      console.error('Ошибка создания заявки:', error);
+      alert('Не удалось создать заявку: ' + (error.response?.data?.message || 'Ошибка сервера'));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    setLoading(true);
+    
     if (!validateForm()) {
+      setLoading(false);
       return;
     }
 
-    // TODO: API call для сохранения черновика
-    console.log('Сохранение черновика:', formData);
-    
-    alert('Черновик сохранен!');
-    navigate('/initiator/requests');
+    try {
+      const submitData = {
+        ...formData,
+        status: 'draft'
+      };
+
+      await api.post('/api/work-requests', submitData);
+      alert('Черновик сохранен!');
+      navigate('/initiator/requests');
+    } catch (error) {
+      console.error('Ошибка сохранения черновика:', error);
+      alert('Не удалось сохранить черновик');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -209,60 +267,60 @@ const CreateRequest = () => {
                 <label>Дата выполнения работ *</label>
                 <input
                   type="date"
-                  name="date"
-                  value={formData.date}
+                  name="work_date"
+                  value={formData.work_date}
                   onChange={handleInputChange}
                   min={new Date().toISOString().split('T')[0]}
-                  className={errors.date ? 'error' : ''}
+                  className={errors.work_date ? 'error' : ''}
                 />
-                {errors.date && <span className="error-message">{errors.date}</span>}
+                {errors.work_date && <span className="error-message">{errors.work_date}</span>}
               </div>
 
               <div className="form-group">
                 <label>Время начала *</label>
                 <select
-                    name="time"
-                    value={formData.time}
-                    onChange={handleInputChange}
-                    className={errors.time ? 'error' : ''}
-                    required
-                  >
-                    <option value="">Выберите время</option>
-                    {timeOptions.map(time => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                {errors.time && <span className="error-message">{errors.time}</span>}
+                  name="start_time"
+                  value={formData.start_time}
+                  onChange={handleInputChange}
+                  className={errors.start_time ? 'error' : ''}
+                  required
+                >
+                  <option value="">Выберите время</option>
+                  {timeOptions.map(time => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+                {errors.start_time && <span className="error-message">{errors.start_time}</span>}
               </div>
 
               <div className="form-group">
                 <label>Продолжительность (часы) *</label>
                 <input
                   type="number"
-                  name="duration"
-                  value={formData.duration}
+                  name="shift_duration"
+                  value={formData.shift_duration}
                   onChange={handleInputChange}
                   min="1"
                   max="24"
-                  className={errors.duration ? 'error' : ''}
+                  className={errors.shift_duration ? 'error' : ''}
                 />
-                {errors.duration && <span className="error-message">{errors.duration}</span>}
+                {errors.shift_duration && <span className="error-message">{errors.shift_duration}</span>}
               </div>
 
               <div className="form-group">
                 <label>Количество исполнителей *</label>
                 <input
                   type="number"
-                  name="workersCount"
-                  value={formData.workersCount}
+                  name="workers_count"
+                  value={formData.workers_count}
                   onChange={handleInputChange}
                   min="1"
                   max="50"
-                  className={errors.workersCount ? 'error' : ''}
+                  className={errors.workers_count ? 'error' : ''}
                 />
-                {errors.workersCount && <span className="error-message">{errors.workersCount}</span>}
+                {errors.workers_count && <span className="error-message">{errors.workers_count}</span>}
               </div>
             </div>
           </section>
@@ -271,60 +329,34 @@ const CreateRequest = () => {
           <section className="form-section">
             <h2>🏢 Организационные данные</h2>
             <div className="form-grid">
-              <div className="form-group full-width">
-                <label>Адрес места работ *</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="ул. Примерная, 123"
-                  className={errors.address ? 'error' : ''}
-                />
-                {errors.address && <span className="error-message">{errors.address}</span>}
-              </div>
-
               <div className="form-group">
-                <label>Бригадир/Контактное лицо *</label>
+                <label>Бригадир *</label>
                 <select
-                  name="brigadierId"
-                  value={formData.brigadierId}
-                  onChange={handleBrigadierChange}
-                  className={errors.brigadierId ? 'error' : ''}
-                  disabled={!formData.date}
+                  name="brigadier_id"
+                  value={formData.brigadier_id}
+                  onChange={handleInputChange}
+                  className={errors.brigadier_id ? 'error' : ''}
+                  disabled={!formData.work_date}
                 >
-                  <option value="">{formData.date ? 'Выберите...' : 'Сначала выберите дату'}</option>
+                  <option value="">{formData.work_date ? 'Выберите бригадира' : 'Сначала выберите дату'}</option>
                   {availableBrigadiers.map(brigadier => (
                     <option key={brigadier.id} value={brigadier.id}>
-                      {brigadier.name}
+                      {brigadier.surname} {brigadier.name} ({brigadier.specialization})
                     </option>
                   ))}
                 </select>
-                {errors.brigadierId && <span className="error-message">{errors.brigadierId}</span>}
-                {!formData.date && (
+                {errors.brigadier_id && <span className="error-message">{errors.brigadier_id}</span>}
+                {!formData.work_date && (
                   <div className="info-message">Выберите дату для просмотра доступных бригадиров</div>
                 )}
               </div>
-
-              {showContactPerson && (
-                <div className="form-group">
-                  <label>ФИО контактного лица *</label>
-                  <input
-                    type="text"
-                    name="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={handleInputChange}
-                    placeholder="Иванов Иван Иванович"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="form-group">
               <label>Комментарий</label>
               <textarea
-                name="comment"
-                value={formData.comment}
+                name="comments"
+                value={formData.comments}
                 onChange={handleInputChange}
                 placeholder="ФИО желаемых исполнителей, детали работ, требования по одежде и т.д."
                 rows="3"
@@ -339,26 +371,26 @@ const CreateRequest = () => {
               <div className="form-group">
                 <label>Специальность исполнителя *</label>
                 <select
-                  name="specialization"
-                  value={formData.specialization}
+                  name="specialty_id"
+                  value={formData.specialty_id}
                   onChange={handleInputChange}
-                  className={errors.specialization ? 'error' : ''}
+                  className={errors.specialty_id ? 'error' : ''}
                 >
                   <option value="">Выберите специальность</option>
-                  {specializations.map(spec => (
-                    <option key={spec} value={spec}>{spec}</option>
+                  {specialties.map(spec => (
+                    <option key={spec.id} value={spec.id}>{spec.name}</option>
                   ))}
                 </select>
-                {errors.specialization && <span className="error-message">{errors.specialization}</span>}
+                {errors.specialty_id && <span className="error-message">{errors.specialty_id}</span>}
               </div>
 
               <div className="form-group">
                 <label>Тип исполнителя *</label>
                 <select
-                  name="executorType"
-                  value={formData.executorType}
+                  name="executor_type"
+                  value={formData.executor_type}
                   onChange={handleInputChange}
-                  className={errors.executorType ? 'error' : ''}
+                  className={errors.executor_type ? 'error' : ''}
                   disabled={availableExecutorTypes.length === 0}
                 >
                   <option value="">
@@ -370,23 +402,23 @@ const CreateRequest = () => {
                     </option>
                   ))}
                 </select>
-                {errors.executorType && <span className="error-message">{errors.executorType}</span>}
+                {errors.executor_type && <span className="error-message">{errors.executor_type}</span>}
               </div>
 
               <div className="form-group">
                 <label>Вид работ *</label>
                 <select
-                  name="workType"
-                  value={formData.workType}
+                  name="work_type_id"
+                  value={formData.work_type_id}
                   onChange={handleInputChange}
-                  className={errors.workType ? 'error' : ''}
+                  className={errors.work_type_id ? 'error' : ''}
                 >
                   <option value="">Выберите вид работ</option>
                   {workTypes.map(work => (
-                    <option key={work} value={work}>{work}</option>
+                    <option key={work.id} value={work.id}>{work.name}</option>
                   ))}
                 </select>
-                {errors.workType && <span className="error-message">{errors.workType}</span>}
+                {errors.work_type_id && <span className="error-message">{errors.work_type_id}</span>}
               </div>
             </div>
           </section>
@@ -428,8 +460,8 @@ const CreateRequest = () => {
                 <label>Компания-плательщик</label>
                 <input
                   type="text"
-                  name="payerCompany"
-                  value={formData.payerCompany}
+                  name="payer_company"
+                  value={formData.payer_company}
                   onChange={handleInputChange}
                   placeholder="Определяется автоматически"
                   readOnly
@@ -444,14 +476,16 @@ const CreateRequest = () => {
               type="button"
               onClick={handleSaveDraft}
               className="btn-secondary"
+              disabled={loading}
             >
-              Сохранить черновик
+              {loading ? 'Сохранение...' : 'Сохранить черновик'}
             </button>
             <button
               type="submit"
               className="btn-primary"
+              disabled={loading}
             >
-              Опубликовать заявку
+              {loading ? 'Публикация...' : 'Опубликовать заявку'}
             </button>
           </div>
         </form>

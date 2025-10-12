@@ -17,7 +17,8 @@ class Shift extends Model
         'work_date',
         'start_time',
         'end_time',
-        'status',
+        'status', // 'planned', 'active', 'completed', 'cancelled'
+        'role', // 'executor', 'brigadier' - ДОБАВЛЕНО
         'shift_started_at',
         'shift_ended_at',
         'notes',
@@ -40,6 +41,7 @@ class Shift extends Model
         'shift_ended_at' => 'datetime',
     ];
 
+    // === СВЯЗИ ===
     public function workRequest()
     {
         return $this->belongsTo(WorkRequest::class, 'request_id');
@@ -74,54 +76,49 @@ class Shift extends Model
     {
         return $this->hasMany(ShiftSegment::class);
     }
-}
 
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class Shift extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'request_id',
-        'user_id',
-        'contractor_id',
-        'contractor_worker_name',
-        'work_date',
-        'start_time',
-        'end_time',
-        'status',
-        'shift_started_at',
-        'shift_ended_at',
-        'notes',
-    ];
-
-    protected $casts = [
-        'work_date' => 'date',
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-        'shift_started_at' => 'datetime',
-        'shift_ended_at' => 'datetime',
-    ];
-
-    // Связи
-    public function workRequest()
+    public function visitedLocations()
     {
-        return $this->belongsTo(WorkRequest::class, 'request_id');
+        return $this->hasMany(VisitedLocation::class);
     }
 
-    public function user()
+    public function photos()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(ShiftPhoto::class);
     }
 
-    public function contractor()
+    // === SCOPES ===
+    public function scopeForUser($query, $userId)
     {
-        return $this->belongsTo(Contractor::class);
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeToday($query)
+    {
+        return $query->whereDate('work_date', today());
+    }
+
+    public function scopeBrigadier($query)
+    {
+        return $query->where('role', 'brigadier');
+    }
+
+    // === МЕТОДЫ ===
+    public function isBrigadier()
+    {
+        return $this->role === 'brigadier';
+    }
+
+    public function calculateTotalTime()
+    {
+        $totalMinutes = $this->visitedLocations->sum('duration_minutes');
+        $this->update(['worked_minutes' => $totalMinutes]);
+        return $totalMinutes;
     }
 }
+

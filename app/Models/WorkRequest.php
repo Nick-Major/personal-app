@@ -13,17 +13,17 @@ class WorkRequest extends Model
         'request_number',
         'initiator_id',
         'brigadier_id',
-        'specialization',
         'specialty_id',
         'work_type_id',
-        'executor_type',
+        'executor_type', // 'our_staff', 'contractor'
         'workers_count',
         'shift_duration',
+        'work_date', // ДОБАВЛЕНО - дата выполнения работ
         'project',
         'purpose',
         'payer_company',
         'comments',
-        'status',
+        'status', // 'draft', 'published', 'in_progress', 'staffed', 'completed'
         'dispatcher_id',
         'published_at',
         'staffed_at',
@@ -31,12 +31,13 @@ class WorkRequest extends Model
     ];
 
     protected $casts = [
+        'work_date' => 'date',
         'published_at' => 'datetime',
         'staffed_at' => 'datetime',
         'completed_at' => 'datetime',
     ];
 
-    // Связи
+    // === СВЯЗИ ===
     public function initiator()
     {
         return $this->belongsTo(User::class, 'initiator_id');
@@ -52,17 +53,6 @@ class WorkRequest extends Model
         return $this->belongsTo(User::class, 'dispatcher_id');
     }
 
-    public function shifts()
-    {
-        return $this->hasMany(Shift::class, 'request_id');
-    }
-
-    public function brigadierAssignment()
-    {
-        return $this->hasOne(BrigadierAssignment::class, 'brigadier_id', 'brigadier_id')
-            ->whereDate('assignment_date', $this->created_at->toDateString());
-    }
-
     public function specialty()
     {
         return $this->belongsTo(Specialty::class);
@@ -71,5 +61,27 @@ class WorkRequest extends Model
     public function workType()
     {
         return $this->belongsTo(WorkType::class);
+    }
+
+    public function shifts()
+    {
+        return $this->hasMany(Shift::class, 'request_id');
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
+    public function brigadierAssignmentDate()
+    {
+        return $this->hasOneThrough(
+            BrigadierAssignmentDate::class,
+            BrigadierAssignment::class,
+            'brigadier_id', // Внешний ключ в BrigadierAssignment
+            'assignment_id', // Внешний ключ в BrigadierAssignmentDate
+            'brigadier_id', // Локальный ключ в WorkRequest
+            'id' // Локальный ключ в BrigadierAssignment
+        )->whereDate('assignment_date', $this->work_date);
     }
 }

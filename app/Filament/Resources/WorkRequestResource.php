@@ -3,15 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WorkRequestResource\Pages;
-use App\Filament\Resources\WorkRequestResource\RelationManagers;
 use App\Models\WorkRequest;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class WorkRequestResource extends Resource
 {
@@ -23,70 +20,110 @@ class WorkRequestResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('initiator_id')
-                    ->relationship('initiator', 'name')
-                    ->required()
-                    ->searchable()
-                    ->preload(),
+                Forms\Components\Section::make('Основная информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('request_number')
+                            ->label('Номер заявки')
+                            ->disabled()
+                            ->default('auto-generated'),
+                            
+                        Forms\Components\Select::make('initiator_id')
+                            ->label('Инициатор')
+                            ->relationship('initiator', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('brigadier_id')
+                            ->label('Бригадир')
+                            ->relationship('brigadier', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('specialty_id')
+                            ->label('Специальность')
+                            ->relationship('specialty', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('work_type_id')
+                            ->label('Вид работ')
+                            ->relationship('workType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                    ])->columns(2),
                     
-                Forms\Components\Select::make('brigadier_id')
-                    ->relationship('brigadier', 'name')
-                    ->required()
-                    ->searchable()
-                    ->preload(),
+                Forms\Components\Section::make('Дата и параметры работ')
+                    ->schema([
+                        Forms\Components\DatePicker::make('work_date')
+                            ->label('Дата выполнения работ')
+                            ->required()
+                            ->native(false),
+                            
+                        Forms\Components\Select::make('executor_type')
+                            ->label('Тип исполнителя')
+                            ->options([
+                                'our_staff' => 'Наш персонал',
+                                'contractor' => 'Подрядчик',
+                            ])
+                            ->required(),
+                            
+                        Forms\Components\TextInput::make('workers_count')
+                            ->label('Количество рабочих')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
+                            
+                        Forms\Components\TextInput::make('shift_duration')
+                            ->label('Продолжительность смены (часы)')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
+                    ])->columns(2),
                     
-                Forms\Components\TextInput::make('specialization')
-                    ->required()
-                    ->maxLength(255),
+                Forms\Components\Section::make('Финансовая информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('project')
+                            ->label('Проект')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('purpose')
+                            ->label('Назначение')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('payer_company')
+                            ->label('Компания-плательщик')
+                            ->maxLength(255),
+                    ])->columns(2),
                     
-                Forms\Components\Select::make('executor_type')
-                    ->options([
-                        'our_staff' => 'Наш персонал',
-                        'contractor' => 'Подрядчик',
-                    ])
-                    ->required(),
-                    
-                Forms\Components\TextInput::make('workers_count')
-                    ->required()
-                    ->numeric(),
-                    
-                Forms\Components\TextInput::make('shift_duration')
-                    ->required()
-                    ->numeric()
-                    ->suffix('часов'),
-                    
-                Forms\Components\TextInput::make('project')
-                    ->required()
-                    ->maxLength(255),
-                    
-                Forms\Components\TextInput::make('purpose')
-                    ->required()
-                    ->maxLength(255),
-                    
-                Forms\Components\TextInput::make('payer_company')
-                    ->required()
-                    ->maxLength(255),
-                    
-                Forms\Components\Textarea::make('comments')
-                    ->columnSpanFull(),
-                    
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'draft' => 'Черновик',
-                        'published' => 'Опубликована',
-                        'in_work' => 'В работе',
-                        'staffed' => 'Укомплектована',
-                        'in_progress' => 'Выполняется',
-                        'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                    ])
-                    ->required()
-                    ->default('draft'),
-                    
-                Forms\Components\Select::make('dispatcher_id')
-                    ->relationship('dispatcher', 'name')
-                    ->searchable()
-                    ->preload(),
+                Forms\Components\Section::make('Дополнительно')
+                    ->schema([
+                        Forms\Components\Textarea::make('comments')
+                            ->label('Комментарии')
+                            ->maxLength(65535)
+                            ->columnSpanFull(),
+                            
+                        Forms\Components\Select::make('status')
+                            ->label('Статус')
+                            ->options([
+                                'draft' => 'Черновик',
+                                'published' => 'Опубликована',
+                                'in_progress' => 'В работе',
+                                'staffed' => 'Укомплектована',
+                                'completed' => 'Завершена',
+                            ])
+                            ->required()
+                            ->default('draft'),
+                            
+                        Forms\Components\Select::make('dispatcher_id')
+                            ->label('Диспетчер')
+                            ->relationship('dispatcher', 'name')
+                            ->searchable()
+                            ->preload(),
+                    ])->columns(2),
             ]);
     }
 
@@ -95,121 +132,105 @@ class WorkRequestResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('request_number')
+                    ->label('Номер')
                     ->searchable()
-                    ->sortable()
-                    ->label('Номер заявки'),
+                    ->sortable(),
+                    
+                Tables\Columns\TextColumn::make('work_date')
+                    ->label('Дата работ')
+                    ->date()
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('initiator.name')
+                    ->label('Инициатор')
                     ->searchable()
-                    ->sortable()
-                    ->label('Инициатор'),
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('brigadier.name')
+                    ->label('Бригадир')
                     ->searchable()
-                    ->sortable()
-                    ->label('Бригадир'),
+                    ->sortable(),
                     
-                Tables\Columns\TextColumn::make('specialization')
+                Tables\Columns\TextColumn::make('specialty.name')
+                    ->label('Специальность')
                     ->searchable()
-                    ->sortable()
-                    ->label('Специализация'),
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('executor_type')
+                    ->label('Тип')
+                    ->formatStateUsing(fn ($state) => $state === 'our_staff' ? 'Наш' : 'Подрядчик')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'our_staff' => 'Наш персонал',
-                        'contractor' => 'Подрядчик',
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'our_staff' => 'success',
-                        'contractor' => 'warning',
-                    })
-                    ->label('Тип исполнителя'),
+                    ->color(fn ($state) => $state === 'our_staff' ? 'success' : 'warning'),
                     
                 Tables\Columns\TextColumn::make('workers_count')
-                    ->sortable()
-                    ->label('Кол-во человек'),
-                    
-                Tables\Columns\TextColumn::make('project')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Проект'),
+                    ->label('Кол-во')
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'draft' => 'Черновик',
-                        'published' => 'Опубликована',
-                        'in_work' => 'В работе',
-                        'staffed' => 'Укомплектована',
-                        'in_progress' => 'Выполняется',
-                        'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                    })
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn ($state) => match($state) {
                         'draft' => 'gray',
                         'published' => 'info',
-                        'in_work' => 'warning',
+                        'in_progress' => 'warning',
                         'staffed' => 'success',
-                        'in_progress' => 'primary',
-                        'completed' => 'success',
-                        'cancelled' => 'danger',
-                    })
-                    ->label('Статус'),
-                    
-                Tables\Columns\TextColumn::make('dispatcher.name')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Диспетчер'),
+                        'completed' => 'primary',
+                        default => 'gray',
+                    }),
                     
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d.m.Y H:i')
+                    ->label('Создана')
+                    ->dateTime()
                     ->sortable()
-                    ->label('Создана'),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Статус')
                     ->options([
                         'draft' => 'Черновик',
                         'published' => 'Опубликована',
-                        'in_work' => 'В работе',
+                        'in_progress' => 'В работе',
                         'staffed' => 'Укомплектована',
-                        'in_progress' => 'Выполняется',
                         'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                    ])
-                    ->label('Статус'),
+                    ]),
                     
                 Tables\Filters\SelectFilter::make('executor_type')
+                    ->label('Тип исполнителя')
                     ->options([
                         'our_staff' => 'Наш персонал',
                         'contractor' => 'Подрядчик',
-                    ])
-                    ->label('Тип исполнителя'),
+                    ]),
                     
-                Tables\Filters\SelectFilter::make('initiator_id')
-                    ->relationship('initiator', 'name')
-                    ->label('Инициатор')
-                    ->searchable()
-                    ->preload(),
+                Tables\Filters\Filter::make('work_date')
+                    ->label('Дата работ')
+                    ->form([
+                        Forms\Components\DatePicker::make('work_date_from')
+                            ->label('С даты'),
+                        Forms\Components\DatePicker::make('work_date_to')
+                            ->label('По дату'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['work_date_from'], fn($q, $date) => $q->whereDate('work_date', '>=', $date))
+                            ->when($data['work_date_to'], fn($q, $date) => $q->whereDate('work_date', '<=', $date));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
-                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->defaultSort('created_at', 'desc');
+            ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            // Связи со сменами и т.д.
         ];
     }
 

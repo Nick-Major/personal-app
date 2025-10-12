@@ -3,15 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
@@ -23,56 +21,85 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255)
-                    ->label('ФИО'),
+                Forms\Components\Section::make('Основная информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('surname')
+                            ->label('Фамилия')
+                            ->required()
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('name')
+                            ->label('Имя')
+                            ->required()
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('patronymic')
+                            ->label('Отчество')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique('users', 'email', ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => 'Пользователь с таким email уже существует',
+                            ]),
+                            
+                        Forms\Components\TextInput::make('password')
+                            ->label('Пароль')
+                            ->password()
+                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                            ->dehydrated(fn ($state) => filled($state))
+                            ->required(fn (string $context): bool => $context === 'create'),
+                    ])->columns(2),
                     
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255)
-                    ->label('Email'),
+                Forms\Components\Section::make('Контактная информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Телефон')
+                            ->tel()
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('telegram_id')
+                            ->label('Telegram ID')
+                            ->maxLength(255),
+                    ])->columns(2),
                     
-                Forms\Components\DateTimePicker::make('email_verified_at')
-                    ->label('Email подтвержден'),
+                Forms\Components\Section::make('Роли и специальности')
+                    ->schema([
+                        Forms\Components\Toggle::make('is_contractor')
+                            ->label('Подрядчик')
+                            ->reactive(),
+                            
+                        Forms\Components\Toggle::make('is_always_brigadier')
+                            ->label('Всегда бригадир'),
+                            
+                        Forms\Components\Select::make('contractor_id')
+                            ->label('Компания-подрядчик')
+                            ->relationship('contractor', 'name')
+                            ->visible(fn (callable $get) => $get('is_contractor')),
+                            
+                        Forms\Components\BelongsToManyCheckboxList::make('specialties')
+                            ->label('Специальности')
+                            ->relationship('specialties', 'name')
+                            ->searchable(),
+                            
+                        Forms\Components\Select::make('roles')
+                            ->label('Роли в системе')
+                            ->relationship('roles', 'name')
+                            ->multiple()
+                            ->preload(),
+                    ]),
                     
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required(fn ($livewire) => $livewire instanceof Pages\CreateUser)
-                    ->maxLength(255)
-                    ->dehydrated(fn ($state) => filled($state))
-                    ->hiddenOn('edit')
-                    ->label('Пароль'),
-                    
-                // ДОБАВИТЬ ЭТО ПОЛЕ - выбор ролей
-                Forms\Components\Select::make('roles')
-                    ->relationship('roles', 'name')
-                    ->multiple()
-                    ->preload()
-                    ->searchable()
-                    ->label('Роли'),
-                    
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->maxLength(255)
-                    ->label('Телефон'),
-                    
-                Forms\Components\TextInput::make('specialization')
-                    ->maxLength(255)
-                    ->label('Специализация'),
-                    
-                Forms\Components\Toggle::make('is_contractor')
-                    ->required()
-                    ->label('Подрядчик'),
-                    
-                Forms\Components\TextInput::make('contractor_id')
-                    ->numeric()
-                    ->label('ID подрядчика'),
-                    
-                Forms\Components\Textarea::make('notes')
-                    ->columnSpanFull()
-                    ->label('Заметки'),
+                Forms\Components\Section::make('Дополнительно')
+                    ->schema([
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Заметки')
+                            ->maxLength(65535)
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -80,58 +107,62 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                Tables\Columns\TextColumn::make('surname')
+                    ->label('Фамилия')
                     ->searchable()
-                    ->sortable()
-                    ->label('ФИО'),
-                    
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Email'),
-                    
-                Tables\Columns\TextColumn::make('phone')
-                    ->searchable()
-                    ->label('Телефон'),
-                    
-                Tables\Columns\TextColumn::make('specialization')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Специализация'),
-                    
-                Tables\Columns\TextColumn::make('roles.name')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'initiator' => 'info',
-                        'brigadier' => 'warning', 
-                        'executor' => 'success',
-                        'dispatcher' => 'danger',
-                        'contractor' => 'gray',
-                        default => 'gray',
-                    })
-                    ->label('Роли'),
-                    
-                Tables\Columns\IconColumn::make('is_contractor')
-                    ->boolean()
-                    ->label('Подрядчик')
                     ->sortable(),
                     
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Имя')
+                    ->searchable()
+                    ->sortable(),
+                    
+                Tables\Columns\TextColumn::make('patronymic')
+                    ->label('Отчество')
+                    ->searchable()
+                    ->sortable(),
+                    
+                Tables\Columns\TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable()
+                    ->sortable(),
+                    
+                Tables\Columns\TextColumn::make('phone')
+                    ->label('Телефон')
+                    ->searchable(),
+                    
+                Tables\Columns\IconColumn::make('is_contractor')
+                    ->label('Подрядчик')
+                    ->boolean(),
+                    
+                Tables\Columns\IconColumn::make('is_always_brigadier')
+                    ->label('Бригадир')
+                    ->boolean(),
+                    
+                Tables\Columns\TextColumn::make('specialties.name')
+                    ->label('Специальности')
+                    ->badge()
+                    ->separator(', '),
+                    
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d.m.Y H:i')
+                    ->label('Создан')
+                    ->dateTime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Создан'),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('roles')
-                    ->relationship('roles', 'name')
-                    ->label('Роль')
-                    ->multiple()
-                    ->preload(),
-                    
                 Tables\Filters\Filter::make('is_contractor')
                     ->label('Только подрядчики')
-                    ->query(fn (Builder $query) => $query->where('is_contractor', true)),
+                    ->query(fn ($query) => $query->where('is_contractor', true)),
+                    
+                Tables\Filters\Filter::make('is_always_brigadier')
+                    ->label('Только бригадиры')
+                    ->query(fn ($query) => $query->where('is_always_brigadier', true)),
+                    
+                Tables\Filters\SelectFilter::make('specialties')
+                    ->label('Специальность')
+                    ->relationship('specialties', 'name')
+                    ->multiple(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -141,14 +172,13 @@ class UserResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->defaultSort('name', 'asc');
+            ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            // Можно добавить связи для отображения смен, заявок и т.д.
         ];
     }
 

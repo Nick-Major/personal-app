@@ -3,15 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ShiftResource\Pages;
-use App\Filament\Resources\ShiftResource\RelationManagers;
 use App\Models\Shift;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ShiftResource extends Resource
 {
@@ -23,63 +20,118 @@ class ShiftResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('request_id')
-                    ->relationship('workRequest', 'id')
-                    ->required()
-                    ->searchable()
-                    ->preload()
-                    ->label('Заявка'),
+                Forms\Components\Section::make('Основная информация')
+                    ->schema([
+                        Forms\Components\Select::make('request_id')
+                            ->label('Заявка')
+                            ->relationship('workRequest', 'request_number')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('user_id')
+                            ->label('Исполнитель')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('role')
+                            ->label('Роль в смене')
+                            ->options([
+                                'executor' => 'Исполнитель',
+                                'brigadier' => 'Бригадир',
+                            ])
+                            ->required()
+                            ->default('executor'),
+                            
+                        Forms\Components\Select::make('specialty_id')
+                            ->label('Специальность')
+                            ->relationship('specialty', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
+                        Forms\Components\Select::make('work_type_id')
+                            ->label('Вид работ')
+                            ->relationship('workType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                    ])->columns(2),
                     
-                Forms\Components\Select::make('user_id')
-                    ->relationship('user', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->label('Исполнитель (наш персонал)')
-                    ->visible(fn ($get) => !$get('contractor_id')),
+                Forms\Components\Section::make('Дата и время')
+                    ->schema([
+                        Forms\Components\DatePicker::make('work_date')
+                            ->label('Дата работы')
+                            ->required()
+                            ->native(false),
+                            
+                        Forms\Components\TimePicker::make('start_time')
+                            ->label('Время начала')
+                            ->seconds(false)
+                            ->required(),
+                            
+                        Forms\Components\TimePicker::make('end_time')
+                            ->label('Время окончания')
+                            ->seconds(false)
+                            ->required(),
+                            
+                        Forms\Components\Select::make('status')
+                            ->label('Статус')
+                            ->options([
+                                'planned' => 'Запланирована',
+                                'active' => 'Активна',
+                                'completed' => 'Завершена',
+                                'cancelled' => 'Отменена',
+                            ])
+                            ->required()
+                            ->default('planned'),
+                    ])->columns(2),
                     
-                Forms\Components\Select::make('contractor_id')
-                    ->relationship('contractor', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->label('Подрядчик')
-                    ->visible(fn ($get) => !$get('user_id')),
+                Forms\Components\Section::make('Подрядчик (если применимо)')
+                    ->schema([
+                        Forms\Components\Select::make('contractor_id')
+                            ->label('Подрядчик')
+                            ->relationship('contractor', 'name')
+                            ->searchable()
+                            ->preload(),
+                            
+                        Forms\Components\TextInput::make('contractor_worker_name')
+                            ->label('Имя рабочего от подрядчика')
+                            ->maxLength(255),
+                    ])->columns(2),
                     
-                Forms\Components\TextInput::make('contractor_worker_name')
-                    ->maxLength(255)
-                    ->label('ФИО работника подрядчика')
-                    ->visible(fn ($get) => $get('contractor_id')),
+                Forms\Components\Section::make('Учет времени и расходов')
+                    ->schema([
+                        Forms\Components\TextInput::make('worked_minutes')
+                            ->label('Отработано минут')
+                            ->numeric()
+                            ->minValue(0),
+                            
+                        Forms\Components\TextInput::make('lunch_minutes')
+                            ->label('Обеденный перерыв (минуты)')
+                            ->numeric()
+                            ->minValue(0),
+                            
+                        Forms\Components\TextInput::make('travel_expense_amount')
+                            ->label('Сумма дорожных расходов')
+                            ->numeric()
+                            ->minValue(0),
+                            
+                        Forms\Components\TextInput::make('hourly_rate_snapshot')
+                            ->label('Ставка (снимок)')
+                            ->numeric()
+                            ->minValue(0),
+                    ])->columns(2),
                     
-                Forms\Components\DatePicker::make('work_date')
-                    ->required()
-                    ->label('Дата работы'),
-                    
-                Forms\Components\TimePicker::make('start_time')
-                    ->label('Время начала'),
-                    
-                Forms\Components\TimePicker::make('end_time')
-                    ->label('Время окончания'),
-                    
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'scheduled' => 'Запланирована',
-                        'started' => 'Начата',
-                        'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                        'no_show' => 'Неявка',
-                    ])
-                    ->required()
-                    ->default('scheduled')
-                    ->label('Статус смены'),
-                    
-                Forms\Components\DateTimePicker::make('shift_started_at')
-                    ->label('Фактическое время начала'),
-                    
-                Forms\Components\DateTimePicker::make('shift_ended_at')
-                    ->label('Фактическое время окончания'),
-                    
-                Forms\Components\Textarea::make('notes')
-                    ->label('Примечания')
-                    ->columnSpanFull(),
+                Forms\Components\Section::make('Дополнительно')
+                    ->schema([
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Заметки')
+                            ->maxLength(65535)
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -87,134 +139,108 @@ class ShiftResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('workRequest.request_number')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Номер заявки'),
+                Tables\Columns\TextColumn::make('work_date')
+                    ->label('Дата')
+                    ->date()
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('user.name')
-                    ->searchable()
-                    ->sortable()
                     ->label('Исполнитель')
-                    ->visible(fn ($record) => $record?->user_id), // Исправлено: добавлен ?
-                    
-                Tables\Columns\TextColumn::make('contractor.name')
                     ->searchable()
-                    ->sortable()
-                    ->label('Подрядчик')
-                    ->visible(fn ($record) => $record?->contractor_id), // Исправлено: добавлен ?
+                    ->sortable(),
                     
-                Tables\Columns\TextColumn::make('contractor_worker_name')
+                Tables\Columns\TextColumn::make('role')
+                    ->label('Роль')
+                    ->formatStateUsing(fn ($state) => $state === 'brigadier' ? 'Бригадир' : 'Исполнитель')
+                    ->badge()
+                    ->color(fn ($state) => $state === 'brigadier' ? 'warning' : 'gray'),
+                    
+                Tables\Columns\TextColumn::make('workRequest.request_number')
+                    ->label('Заявка')
                     ->searchable()
-                    ->sortable()
-                    ->label('Работник подрядчика')
-                    ->visible(fn ($record) => $record?->contractor_id), // Исправлено: добавлен ?
+                    ->sortable(),
                     
-                Tables\Columns\TextColumn::make('work_date')
-                    ->date('d.m.Y')
-                    ->sortable()
-                    ->label('Дата работы'),
-                    
-                Tables\Columns\TextColumn::make('start_time')
-                    ->time('H:i')
-                    ->sortable()
-                    ->label('Начало'),
-                    
-                Tables\Columns\TextColumn::make('end_time')
-                    ->time('H:i')
-                    ->sortable()
-                    ->label('Окончание'),
+                Tables\Columns\TextColumn::make('specialty.name')
+                    ->label('Специальность')
+                    ->searchable()
+                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Статус')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'scheduled' => 'Запланирована',
-                        'started' => 'Начата',
-                        'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                        'no_show' => 'Неявка',
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'scheduled' => 'gray',
-                        'started' => 'warning',
+                    ->color(fn ($state) => match($state) {
+                        'planned' => 'gray',
+                        'active' => 'warning',
                         'completed' => 'success',
                         'cancelled' => 'danger',
-                        'no_show' => 'danger',
-                    })
-                    ->label('Статус'),
+                        default => 'gray',
+                    }),
                     
-                Tables\Columns\TextColumn::make('shift_started_at')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Факт. начало'),
+                Tables\Columns\TextColumn::make('start_time')
+                    ->label('Начало')
+                    ->time(),
                     
-                Tables\Columns\TextColumn::make('shift_ended_at')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Факт. окончание'),
+                Tables\Columns\TextColumn::make('end_time')
+                    ->label('Окончание')
+                    ->time(),
                     
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Создана'),
+                Tables\Columns\TextColumn::make('worked_minutes')
+                    ->label('Минуты')
+                    ->formatStateUsing(fn ($state) => $state ? "{$state} мин" : '-')
+                    ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                Tables\Filters\SelectFilter::make('role')
+                    ->label('Роль')
                     ->options([
-                        'scheduled' => 'Запланирована',
-                        'started' => 'Начата',
+                        'executor' => 'Исполнитель',
+                        'brigadier' => 'Бригадир',
+                    ]),
+                    
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Статус')
+                    ->options([
+                        'planned' => 'Запланирована',
+                        'active' => 'Активна',
                         'completed' => 'Завершена',
                         'cancelled' => 'Отменена',
-                        'no_show' => 'Неявка',
-                    ])
-                    ->label('Статус'),
+                    ]),
                     
-                Tables\Filters\SelectFilter::make('workRequest.initiator_id')
-                    ->relationship('workRequest.initiator', 'name')
-                    ->label('Инициатор заявки')
+                Tables\Filters\SelectFilter::make('user_id')
+                    ->label('Исполнитель')
+                    ->relationship('user', 'name')
                     ->searchable()
                     ->preload(),
                     
                 Tables\Filters\Filter::make('work_date')
+                    ->label('Дата работы')
                     ->form([
                         Forms\Components\DatePicker::make('work_date_from')
                             ->label('С даты'),
                         Forms\Components\DatePicker::make('work_date_to')
                             ->label('По дату'),
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
+                    ->query(function ($query, array $data) {
                         return $query
-                            ->when(
-                                $data['work_date_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('work_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['work_date_to'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('work_date', '<=', $date),
-                            );
-                    })
-                    ->label('Дата работы'),
+                            ->when($data['work_date_from'], fn($q, $date) => $q->whereDate('work_date', '>=', $date))
+                            ->when($data['work_date_to'], fn($q, $date) => $q->whereDate('work_date', '<=', $date));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
-                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->defaultSort('work_date', 'desc');
+            ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            // Связи с локациями, фото, расходами
         ];
     }
 

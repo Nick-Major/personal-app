@@ -12,9 +12,11 @@ class BrigadierAssignment extends Model
     protected $fillable = [
         'brigadier_id',
         'initiator_id',
+        'can_create_requests', // ДОБАВЛЕНО - права Инициатора-Бригадира
+        'status', // 'active', 'inactive'
     ];
 
-    // Связи
+    // === СВЯЗИ ===
     public function brigadier()
     {
         return $this->belongsTo(User::class, 'brigadier_id');
@@ -27,13 +29,13 @@ class BrigadierAssignment extends Model
 
     public function assignmentDates()
     {
-        // Явно указываем внешний ключ, т.к. в дочерней таблице он называется assignment_id
         return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id');
     }
 
     public function confirmedDates()
     {
-        return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id')->where('status', 'confirmed');
+        return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id')
+                    ->where('status', 'confirmed');
     }
 
     public function workRequests()
