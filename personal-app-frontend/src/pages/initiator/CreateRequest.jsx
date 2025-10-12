@@ -195,6 +195,11 @@ const CreateRequest = () => {
     }
 
     try {
+      // ОТЛАДКА ДАТЫ ПЕРЕД ОТПРАВКОЙ
+      console.log('=== ОТПРАВЛЯЕМЫЕ ДАННЫЕ ===');
+      console.log('work_date:', formData.work_date);
+      console.log('work_date тип:', typeof formData.work_date);
+      console.log('==========================');
       // Добавляем статус по умолчанию
       const submitData = {
         ...formData,

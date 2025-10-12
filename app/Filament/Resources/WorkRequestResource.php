@@ -62,6 +62,13 @@ class WorkRequestResource extends Resource
                             ->label('Дата выполнения работ')
                             ->required()
                             ->native(false),
+
+                            // ДОБАВЬТЕ ЭТО ПОЛЕ
+                        Forms\Components\TimePicker::make('start_time')
+                            ->label('Время начала работ')
+                            ->required()
+                            ->seconds(false)
+                            ->displayFormat('H:i'),
                             
                         Forms\Components\Select::make('executor_type')
                             ->label('Тип исполнителя')
@@ -139,6 +146,12 @@ class WorkRequestResource extends Resource
                 Tables\Columns\TextColumn::make('work_date')
                     ->label('Дата работ')
                     ->date()
+                    ->sortable(),
+
+                    // ДОБАВЬТЕ ЭТУ КОЛОНКУ
+                Tables\Columns\TextColumn::make('start_time')
+                    ->label('Время начала')
+                    ->time('H:i')
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('initiator.name')

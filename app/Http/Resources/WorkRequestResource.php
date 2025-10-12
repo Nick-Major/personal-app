@@ -15,10 +15,14 @@ class WorkRequestResource extends JsonResource
             'initiator' => new UserResource($this->whenLoaded('initiator')),
             'brigadier' => new UserResource($this->whenLoaded('brigadier')),
             'dispatcher' => new UserResource($this->whenLoaded('dispatcher')),
+            'specialty' => new SpecialtyResource($this->whenLoaded('specialty')), // ДОБАВЬТЕ ЭТУ СТРОКУ
+            'work_type' => new WorkTypeResource($this->whenLoaded('workType')), // ДОБАВЬТЕ ЭТУ СТРОКУ
             'specialization' => $this->specialization,
             'executor_type' => $this->executor_type,
             'workers_count' => $this->workers_count,
             'shift_duration' => $this->shift_duration,
+            'work_date' => $this->work_date, // ДОБАВЬТЕ ЭТУ СТРОКУ - ОСНОВНАЯ ПРОБЛЕМА!
+            'start_time' => $this->start_time, // добавьте это
             'project' => $this->project,
             'purpose' => $this->purpose,
             'payer_company' => $this->payer_company,

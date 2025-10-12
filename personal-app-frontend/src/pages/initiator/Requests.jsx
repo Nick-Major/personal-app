@@ -38,6 +38,43 @@ const Requests = () => {
     }
   };
 
+  // Отладка данных
+  useEffect(() => {
+    if (requests.length > 0) {
+      console.log('=== ОТЛАДКА ДАННЫХ ЗАЯВОК ===');
+      console.log('Загружено заявок:', requests.length);
+      console.log('Первая заявка:', requests[0]);
+      console.log('Work_date первой заявки:', requests[0].work_date);
+      console.log('Work_date тип:', typeof requests[0].work_date);
+      console.log('Work_date значение:', requests[0].work_date);
+      console.log('============================');
+    }
+  }, [requests]);
+
+  // Функция для форматирования даты
+  const formatWorkDate = (dateString) => {
+    if (!dateString) return 'Не указана';
+    
+    try {
+      const date = new Date(dateString);
+      
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return 'Неверная дата';
+      }
+      
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'Europe/Moscow'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error, dateString);
+      return 'Ошибка даты';
+    }
+  };
+
   // Фильтрация
   const filteredRequests = requests.filter(request => {
     if (filters.status && request.status !== filters.status) {
@@ -215,6 +252,15 @@ const Requests = () => {
               <tr>
                 <td colSpan="9" className="no-data">
                   {requests.length === 0 ? 'Нет заявок' : 'Заявки не найдены по фильтру'}
+                  {/* ВРЕМЕННАЯ ОТЛАДКА */}
+                  {requests.length > 0 && (
+                    <div style={{ marginTop: '10px', background: '#fff', padding: '10px', borderRadius: '5px' }}>
+                      <strong>Отладка данных:</strong>
+                      <pre style={{ fontSize: '12px' }}>
+                        {JSON.stringify(requests[0], null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -224,7 +270,17 @@ const Requests = () => {
                     <strong>{request.request_number || `ЗАЯВКА-${request.id}`}</strong>
                   </td>
                   <td>
-                    {request.work_date ? new Date(request.work_date).toLocaleDateString('ru-RU') : 'Не указана'}
+                    <div>
+                      <div style={{fontWeight: 'bold'}}>
+                        {formatWorkDate(request.work_date)}
+                      </div>
+                      {/* Детальная отладка даты */}
+                      <div style={{fontSize: '10px', color: '#666', marginTop: '2px'}}>
+                        <div>ISO: {request.work_date}</div>
+                        <div>Parsed: {new Date(request.work_date).toString()}</div>
+                        <div>Timestamp: {new Date(request.work_date).getTime()}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>{request.brigadier?.name || 'Не назначен'}</td>
                   <td>{request.specialty?.name || 'Не указана'}</td>

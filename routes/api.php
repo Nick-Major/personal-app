@@ -29,6 +29,34 @@ Route::middleware('api')->group(function () {
     });
     
     Route::post('/login', [AuthController::class, 'login']);
+    // Простые маршруты без контроллеров
+    Route::get('/specialties', function () {
+        return \App\Models\Specialty::all();
+    });
+    
+    Route::get('/work-types', function () {
+        return \App\Models\WorkType::all();
+    });
+
+    // Добавить временные endpoints для отладки
+    Route::get('/debug/specialties', function () {
+        return \App\Models\Specialty::all();
+    });
+
+    Route::get('/debug/work-types', function () {
+        return \App\Models\WorkType::all();
+    });
+
+    Route::get('/debug/work-requests', function () {
+        return \App\Models\WorkRequest::with(['initiator', 'brigadier', 'specialty', 'workType'])->get();
+    });
+
+    Route::get('/debug/my-work-requests', function (Request $request) {
+        $user = $request->user();
+        return \App\Models\WorkRequest::with(['initiator', 'brigadier', 'specialty', 'workType'])
+            ->where('initiator_id', $user->id)
+            ->get();
+    });
 });
 
 // Protected routes (require authentication)
@@ -73,23 +101,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/shifts/{shift}/photos', [ExecutorController::class, 'addPhoto']);
     });
 
-    // Добавить временные endpoints для отладки
-    Route::get('/debug/specialties', function () {
-        return \App\Models\Specialty::all();
-    });
-
-    Route::get('/debug/work-types', function () {
-        return \App\Models\WorkType::all();
-    });
-
-    Route::get('/debug/work-requests', function () {
-        return \App\Models\WorkRequest::with(['initiator', 'brigadier', 'specialty', 'workType'])->get();
-    });
-
-    Route::get('/debug/my-work-requests', function (Request $request) {
-        $user = $request->user();
-        return \App\Models\WorkRequest::with(['initiator', 'brigadier', 'specialty', 'workType'])
-            ->where('initiator_id', $user->id)
-            ->get();
-    });
+    
 });

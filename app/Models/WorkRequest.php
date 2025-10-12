@@ -19,6 +19,7 @@ class WorkRequest extends Model
         'workers_count',
         'shift_duration',
         'work_date', // ДОБАВЛЕНО - дата выполнения работ
+        'start_time',
         'project',
         'purpose',
         'payer_company',
@@ -32,6 +33,7 @@ class WorkRequest extends Model
 
     protected $casts = [
         'work_date' => 'date',
+        'start_time' => 'datetime',
         'published_at' => 'datetime',
         'staffed_at' => 'datetime',
         'completed_at' => 'datetime',
