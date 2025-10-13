@@ -60,12 +60,12 @@ const CreateRequest = () => {
 
   const loadInitialData = async () => {
     try {
-      // Загружаем специальности
-      const specialtiesResponse = await api.get('/api/specialties');
+      // Загружаем специальности - ИСПРАВЛЕНО: убрал /api
+      const specialtiesResponse = await api.get('/specialties');
       setSpecialties(specialtiesResponse.data);
       
-      // Загружаем виды работ
-      const workTypesResponse = await api.get('/api/work-types');
+      // Загружаем виды работ - ИСПРАВЛЕНО: убрал /api
+      const workTypesResponse = await api.get('/work-types');
       setWorkTypes(workTypesResponse.data);
       
     } catch (error) {
@@ -113,7 +113,7 @@ const CreateRequest = () => {
 
   const loadAvailableBrigadiers = async (date) => {
     try {
-      const response = await api.get('/api/brigadiers/available', {
+      const response = await api.get('/brigadiers/available', {
         params: { date }
       });
       setAvailableBrigadiers(response.data);
@@ -121,7 +121,7 @@ const CreateRequest = () => {
       console.error('Ошибка загрузки бригадиров:', error);
       // Fallback на mock данные
       const mockBrigadiers = [
-        { id: 1, name: 'Иван Петров', surname: 'Петров', specialization: 'садовник' },
+        { id: 1, name: 'Иван', surname: 'Петров', specialization: 'садовник' },
         { id: 2, name: 'Мария', surname: 'Сидорова', specialization: 'декоратор' },
         { id: 9, name: 'Сергей', surname: 'Иванов', specialization: 'администратор' }
       ];
@@ -141,7 +141,7 @@ const CreateRequest = () => {
       setAvailableExecutorTypes(types);
       
       if (formData.executor_type && !types.includes(formData.executor_type)) {
-        setFormData(prev => ({ ...prev, executor_type: '' }));
+        setFormData(prev => ({ ...prev, executor_type: types[0] || '' }));
       }
     } else {
       setAvailableExecutorTypes([]);
@@ -187,6 +187,7 @@ const CreateRequest = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('=== ОТПРАВЛЯЕМЫЕ ДАННЫЕ ===', formData);
     setLoading(true);
     
     if (!validateForm()) {
@@ -200,13 +201,17 @@ const CreateRequest = () => {
       console.log('work_date:', formData.work_date);
       console.log('work_date тип:', typeof formData.work_date);
       console.log('==========================');
-      // Добавляем статус по умолчанию
+      
+      // Добавляем статус по умолчанию и initiator_id
       const submitData = {
         ...formData,
-        status: 'published' // или 'draft' для черновика
+        status: 'published', // или 'draft' для черновика
+        initiator_id: 7 // TODO: Получить из контекста авторизации
       };
 
-      await api.post('/api/work-requests', submitData);
+      // ИСПРАВЛЕНО: ТОЛЬКО ОДИН POST ЗАПРОС
+      const response = await api.post('/work-requests', submitData);
+      console.log('Заявка создана:', response.data);
       alert('Заявка успешно опубликована!');
       navigate('/initiator/requests');
     } catch (error) {
@@ -228,10 +233,13 @@ const CreateRequest = () => {
     try {
       const submitData = {
         ...formData,
-        status: 'draft'
+        status: 'draft',
+        initiator_id: 7 // TODO: Получить из контекста авторизации
       };
 
-      await api.post('/api/work-requests', submitData);
+      // ИСПРАВЛЕНО: ТОЛЬКО ОДИН POST ЗАПРОС
+      const response = await api.post('/work-requests', submitData);
+      console.log('Черновик сохранен:', response.data);
       alert('Черновик сохранен!');
       navigate('/initiator/requests');
     } catch (error) {

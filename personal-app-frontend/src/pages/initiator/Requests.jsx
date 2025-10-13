@@ -6,12 +6,16 @@ import './Requests.css';
 
 const Requests = () => {
   const [requests, setRequests] = useState([]);
-  const [filterMode, setFilterMode] = useState('all');
-  const [filters, setFilters] = useState({
-    status: '',
-    specialty: '',
-    dateFrom: '',
-    dateTo: ''
+  const [filterMode, setFilterMode] = useState('my'); // По умолчанию "Ваши заявки"
+  const [filters, setFilters] = useState(() => {
+    // Восстанавливаем фильтры из localStorage
+    const saved = localStorage.getItem('requests_filters');
+    return saved ? JSON.parse(saved) : {
+      status: '',
+      specialty: '',
+      dateFrom: '',
+      dateTo: ''
+    };
   });
   const [loading, setLoading] = useState(true);
 
@@ -19,12 +23,16 @@ const Requests = () => {
     loadRequests();
   }, [filterMode]);
 
+  useEffect(() => {
+    localStorage.setItem('requests_filters', JSON.stringify(filters));
+  }, [filters]);
+
   const loadRequests = async () => {
     try {
       setLoading(true);
-      let endpoint = '/api/work-requests';
+      let endpoint = '/work-requests';
       if (filterMode === 'my') {
-        endpoint = '/api/my/work-requests';
+        endpoint = '/my/work-requests'; // Убрал /api - уже есть в baseURL
       }
       
       const response = await api.get(endpoint);
@@ -45,8 +53,8 @@ const Requests = () => {
       console.log('Загружено заявок:', requests.length);
       console.log('Первая заявка:', requests[0]);
       console.log('Work_date первой заявки:', requests[0].work_date);
-      console.log('Work_date тип:', typeof requests[0].work_date);
-      console.log('Work_date значение:', requests[0].work_date);
+      console.log('Start_time первой заявки:', requests[0].start_time);
+      console.log('Initiator первой заявки:', requests[0].initiator);
       console.log('============================');
     }
   }, [requests]);
@@ -72,6 +80,52 @@ const Requests = () => {
     } catch (error) {
       console.error('Date formatting error:', error, dateString);
       return 'Ошибка даты';
+    }
+  };
+
+  // Функция для форматирования времени
+  const formatStartTime = (timeString) => {
+    if (!timeString) return 'Не указано';
+    
+    try {
+      // Если время в формате "HH:mm"
+      if (typeof timeString === 'string' && timeString.includes(':')) {
+        const [hours, minutes] = timeString.split(':');
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+      }
+      
+      // Если время как объект Date
+      if (timeString instanceof Date || (typeof timeString === 'string' && timeString.includes('T'))) {
+        const time = new Date(timeString);
+        return time.toLocaleTimeString('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Moscow'
+        });
+      }
+      
+      return 'Неверный формат';
+    } catch (error) {
+      console.error('Time formatting error:', error, timeString);
+      return 'Ошибка времени';
+    }
+  };
+
+  // Функция для форматирования имени инициатора
+  const formatInitiatorName = (initiator) => {
+    if (!initiator) return 'Не указан';
+    
+    const name = initiator.name || '';
+    const surname = initiator.surname || '';
+    
+    if (name && surname) {
+      return `${name} ${surname}`;
+    } else if (name) {
+      return name;
+    } else if (surname) {
+      return surname;
+    } else {
+      return 'Не указан';
     }
   };
 
@@ -238,11 +292,15 @@ const Requests = () => {
             <tr>
               <th>№ Заявки</th>
               <th>Дата работ</th>
+              <th>Время начала</th>
+              <th>Инициатор</th>
               <th>Бригадир</th>
               <th>Специальность</th>
               <th>Вид работ</th>
               <th>Кол-во</th>
               <th>Проект</th>
+              <th>Назначение</th>
+              <th>Компания-плательщик</th>
               <th>Статус</th>
               <th>Действия</th>
             </tr>
@@ -250,17 +308,8 @@ const Requests = () => {
           <tbody>
             {filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan="9" className="no-data">
+                <td colSpan="13" className="no-data">
                   {requests.length === 0 ? 'Нет заявок' : 'Заявки не найдены по фильтру'}
-                  {/* ВРЕМЕННАЯ ОТЛАДКА */}
-                  {requests.length > 0 && (
-                    <div style={{ marginTop: '10px', background: '#fff', padding: '10px', borderRadius: '5px' }}>
-                      <strong>Отладка данных:</strong>
-                      <pre style={{ fontSize: '12px' }}>
-                        {JSON.stringify(requests[0], null, 2)}
-                      </pre>
-                    </div>
-                  )}
                 </td>
               </tr>
             ) : (
@@ -270,23 +319,25 @@ const Requests = () => {
                     <strong>{request.request_number || `ЗАЯВКА-${request.id}`}</strong>
                   </td>
                   <td>
-                    <div>
-                      <div style={{fontWeight: 'bold'}}>
-                        {formatWorkDate(request.work_date)}
-                      </div>
-                      {/* Детальная отладка даты */}
-                      <div style={{fontSize: '10px', color: '#666', marginTop: '2px'}}>
-                        <div>ISO: {request.work_date}</div>
-                        <div>Parsed: {new Date(request.work_date).toString()}</div>
-                        <div>Timestamp: {new Date(request.work_date).getTime()}</div>
-                      </div>
+                    <div style={{fontWeight: 'bold'}}>
+                      {formatWorkDate(request.work_date)}
                     </div>
                   </td>
-                  <td>{request.brigadier?.name || 'Не назначен'}</td>
+                  <td>
+                    <div style={{fontWeight: '500'}}>
+                      {formatStartTime(request.start_time)}
+                    </div>
+                  </td>
+                  <td>
+                    {formatInitiatorName(request.initiator)}
+                  </td>
+                  <td>{request.brigadier ? formatInitiatorName(request.brigadier) : 'Не назначен'}</td>
                   <td>{request.specialty?.name || 'Не указана'}</td>
                   <td>{request.work_type?.name || 'Не указан'}</td>
                   <td>{request.workers_count} чел.</td>
                   <td>{request.project || '-'}</td>
+                  <td>{request.purpose || '-'}</td>
+                  <td>{request.payer_company || '-'}</td>
                   <td>
                     <span 
                       className="status-badge"

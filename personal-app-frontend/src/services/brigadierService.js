@@ -5,7 +5,7 @@ export const brigadierService = {
     // Получить всех бригадиров
     async getAllBrigadiers() {
         try {
-            const response = await api.get('/api/users/brigadiers');
+            const response = await api.get('/users/brigadiers');
             return response.data;
         } catch (error) {
             console.error('Error in getAllBrigadiers:', error);
@@ -16,7 +16,7 @@ export const brigadierService = {
     // Получить доступных бригадиров на дату
     async getAvailableBrigadiers(date) {
         try {
-            const response = await api.get('/api/brigadiers/available', {
+            const response = await api.get('/brigadiers/available', {
                 params: { date }
             });
             return response.data;
@@ -30,8 +30,8 @@ export const brigadierService = {
     async createAssignment(assignmentData) {
         try {
             // Диагностическое логирование запроса
-            console.info('[brigadierService.createAssignment] POST /api/brigadier-assignments payload:', assignmentData);
-            const response = await api.post('/api/brigadier-assignments', assignmentData);
+            console.info('[brigadierService.createAssignment] POST /brigadier-assignments payload:', assignmentData);
+            const response = await api.post('/brigadier-assignments', assignmentData);
             console.info('[brigadierService.createAssignment] Response:', {
                 status: response.status,
                 data: response.data
@@ -56,7 +56,7 @@ export const brigadierService = {
     // Получить все назначения
     async getAssignments() {
         try {
-            const response = await api.get('/api/brigadier-assignments');
+            const response = await api.get('/brigadier-assignments');
             return response.data;
         } catch (error) {
             console.error('Error in getAssignments:', error);
@@ -67,7 +67,7 @@ export const brigadierService = {
     // Получить мои назначения (как инициатора)
     async getMyAssignments() {
         try {
-            const response = await api.get('/api/my/brigadier-assignments');
+            const response = await api.get('/my/brigadier-assignments');
             return response.data;
         } catch (error) {
             console.error('Error in getMyAssignments:', error);
@@ -78,7 +78,7 @@ export const brigadierService = {
     // Подтвердить назначение (для бригадира)
     async confirmAssignment(assignmentId) {
         try {
-            const response = await api.post(`/api/brigadier-assignments/${assignmentId}/confirm`);
+            const response = await api.post(`/brigadier-assignments/${assignmentId}/confirm`);
             return response.data;
         } catch (error) {
             console.error('Error in confirmAssignment:', error);
@@ -89,7 +89,7 @@ export const brigadierService = {
     // Отклонить назначение (для бригадира)
     async rejectAssignment(assignmentId, reason) {
         try {
-            const response = await api.post(`/api/brigadier-assignments/${assignmentId}/reject`, {
+            const response = await api.post(`/brigadier-assignments/${assignmentId}/reject`, {
                 rejection_reason: reason
             });
             return response.data;
@@ -102,7 +102,7 @@ export const brigadierService = {
     // Удалить назначение
     async deleteAssignment(assignmentId) {
         try {
-            const response = await api.delete(`/api/brigadier-assignments/${assignmentId}`);
+            const response = await api.delete(`/brigadier-assignments/${assignmentId}`);
             return response.data;
         } catch (error) {
             console.error('Error in deleteAssignment:', error);

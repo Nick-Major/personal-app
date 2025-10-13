@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Api/BrigadierController.php
 
 namespace App\Http\Controllers\Api;
 
@@ -16,12 +15,15 @@ class BrigadierController extends Controller
     {
         $date = $request->get('date', now()->format('Y-m-d'));
 
-        $brigadiers = User::role('executor')
+        // ИСПРАВЛЕНО: ищем пользователей с ролью 'brigadier', а не 'executor'
+        $brigadiers = User::role('brigadier')
             ->whereDoesntHave('brigadierAssignments', function($query) use ($date) {
-                $query->where('assignment_date', $date)
-                    ->where('status', 'confirmed');
+                $query->whereHas('assignmentDates', function($q) use ($date) {
+                    $q->where('assignment_date', $date)
+                      ->where('status', 'confirmed');
+                });
             })
-            ->select('id', 'name', 'email', 'specialization', 'phone')
+            ->select('id', 'name', 'surname', 'specialization', 'phone')
             ->get();
 
         return response()->json($brigadiers);
@@ -43,8 +45,10 @@ class BrigadierController extends Controller
 
         // Проверяем, что бригадир доступен на эту дату
         $existingAssignment = BrigadierAssignment::where('brigadier_id', $validated['brigadier_id'])
-            ->where('assignment_date', $validated['assignment_date'])
-            ->where('status', 'confirmed')
+            ->whereHas('assignmentDates', function($query) use ($validated) {
+                $query->where('assignment_date', $validated['assignment_date'])
+                      ->where('status', 'confirmed');
+            })
             ->first();
 
         if ($existingAssignment) {
@@ -55,17 +59,22 @@ class BrigadierController extends Controller
             $assignment = BrigadierAssignment::create([
                 'brigadier_id' => $validated['brigadier_id'],
                 'initiator_id' => auth()->id(),
+                'status' => 'pending'
+            ]);
+
+            // Создаем запись даты назначения
+            $assignment->assignmentDates()->create([
                 'assignment_date' => $validated['assignment_date'],
                 'status' => 'pending'
             ]);
 
             return response()->json([
                 'message' => 'Бригадир назначен',
-                'assignment' => $assignment
+                'assignment' => $assignment->load('assignmentDates')
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Ошибка при назначении бригадира'], 500);
+            return response()->json(['error' => 'Ошибка при назначении бригадира: ' . $e->getMessage()], 500);
         }
     }
 }

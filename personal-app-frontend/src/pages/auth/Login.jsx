@@ -20,9 +20,11 @@ const Login = () => {
       console.log('Attempting login with:', email)
       const response = await login(email, password)
       console.log('Login successful, redirecting...')
-      
-      // Редирект на основе роли
-      const role = response.user.roles[0]
+      console.log('User roles:', response.user.roles)
+
+      // Редирект на основе роли - ИСПРАВЛЕНО: берем name роли
+      const role = response.user.roles[0]?.name || 'initiator'
+      console.log('Redirecting to role:', role)
       navigate(`/${role}/dashboard`)
     } catch (err) {
       console.log('Login error:', err)

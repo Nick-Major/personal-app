@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,5 +8,17 @@ export default defineConfig({
     host: true,
     port: 3000,
     strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://personal-app-laravel.test-1",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/sanctum": {
+        target: "http://personal-app-laravel.test-1", 
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
-})
+});
