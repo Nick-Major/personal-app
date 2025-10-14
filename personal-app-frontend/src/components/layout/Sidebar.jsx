@@ -16,17 +16,6 @@ const Sidebar = ({ user }) => {
         return initiatorMenu
       case 'executor':
         return executorMenu
-      case 'brigadier':
-        return [
-          { 
-            title: 'Основное', 
-            items: [
-              { path: '/brigadier/dashboard', label: 'Дашборд', icon: '🏠' },
-              { path: '/brigadier/team', label: 'Управление командой', icon: '👥' },
-              { path: '/brigadier/requests', label: 'Заявки', icon: '📋' }
-            ]
-          }
-        ]
       case 'dispatcher':
         return dispatcherMenu
       default:
@@ -34,6 +23,8 @@ const Sidebar = ({ user }) => {
         return executorMenu
     }
   }
+
+  // УДАЛИТЬ всю секцию для 'brigadier' - этой роли больше нет
 
   // Рендер секций меню
   const renderMenuSections = (menu) => {

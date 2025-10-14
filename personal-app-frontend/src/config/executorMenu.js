@@ -11,6 +11,16 @@ export const executorMenu = [
     ]
   },
   {
+    title: 'Управление',
+    items: [
+      { 
+        path: '/executor/assignments', 
+        label: 'Назначения бригадиром', 
+        icon: '👨‍💼' 
+      }
+    ]
+  },
+  {
     title: 'Личная информация',
     items: [
       { 

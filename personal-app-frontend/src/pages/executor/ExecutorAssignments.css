@@ -1,0 +1,191 @@
+.executor-assignments {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.page-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.page-header h2 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.page-header p {
+  color: #666;
+  font-size: 1.1em;
+}
+
+.assignments-section {
+  margin-bottom: 40px;
+}
+
+.assignments-section h3 {
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.no-assignments {
+  text-align: center;
+  padding: 40px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #666;
+}
+
+.assignments-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+.assignment-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.assignment-card.pending {
+  border-left: 4px solid #f39c12;
+}
+
+.assignment-card.confirmed {
+  border-left: 4px solid #27ae60;
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.assignment-header h4 {
+  margin: 0;
+  color: #333;
+}
+
+.assignment-date {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.assignment-dates {
+  margin-bottom: 15px;
+}
+
+.assignment-dates strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.dates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.date-chip {
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.9em;
+  color: #333;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.date-chip.confirmed {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.date-status {
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+}
+
+.assignment-rights {
+  margin-bottom: 15px;
+}
+
+.rights-badge {
+  background: #e8f5e8;
+  color: #2d5016;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.assignment-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+  flex: 1;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #218838;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-size: 1.2em;
+  color: #666;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .executor-assignments {
+    padding: 10px;
+  }
+  
+  .assignments-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .assignment-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .assignment-actions {
+    flex-direction: column;
+  }
+}

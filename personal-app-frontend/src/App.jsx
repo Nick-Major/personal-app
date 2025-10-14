@@ -1,12 +1,11 @@
-import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/auth/Login'
 import InitiatorRoutes from './pages/initiator/InitiatorRoutes'
-import ExecutorDashboard from './pages/executor/Dashboard'
-import ExecutorProfile from './pages/executor/Profile' // ← ДОБАВИЛИ
-import BrigadierDashboard from './pages/brigadier/Dashboard'
+import ExecutorAssignments from './pages/executor/ExecutorAssignments'
+import ExecutorDashboard from './pages/executor/ExecutorDashboard'
+import ExecutorProfile from './pages/executor/ExecutorProfile'
 import DispatcherDashboard from './pages/dispatcher/Dashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
@@ -14,49 +13,41 @@ import './App.css'
 // Компонент для редиректа на основе роли
 const RoleRedirect = () => {
   const { user, loading } = useAuth()
-  
+
   console.log('=== ROLE REDIRECT ===')
   console.log('Loading:', loading)
   console.log('User:', user)
-  
-  // Пока загружаем, показываем загрузку
+
   if (loading) {
     return <div>Загрузка...</div>
   }
-  
-  // Если нет пользователя, на логин
+
   if (!user) {
-    console.log('No user, redirecting to login')
     return <Navigate to="/login" replace />
   }
-  
-  // Получаем роль
-  const role = user?.roles?.[0]?.name || 'initiator'
-  console.log('Detected role:', role)
-  
-  switch(role.toLowerCase()) {
+
+  // Редирект на основе роли
+  const userRole = user.roles?.[0]?.name
+
+  switch (userRole) {
     case 'initiator':
-      console.log('Redirecting to initiator dashboard')
-      return <Navigate to="/initiator/dashboard" replace />
+      return <Navigate to="/initiator" replace />
     case 'executor':
-      return <Navigate to="/executor/shifts" replace />
-    case 'brigadier':
-      return <Navigate to="/brigadier/dashboard" replace />
+      return <Navigate to="/executor" replace />
     case 'dispatcher':
-      return <Navigate to="/dispatcher/dashboard" replace />
+      return <Navigate to="/dispatcher" replace />
     default:
-      console.log('Unknown role, defaulting to initiator')
-      return <Navigate to="/initiator/dashboard" replace />
+      return <Navigate to="/login" replace />
   }
 }
 
-// Компонент для маршрутов исполнителя
 const ExecutorRoutes = () => {
   return (
     <Routes>
-      <Route index element={<Navigate to="shifts" replace />} /> {/* ← РЕДИРЕКТ на смены */}
+      <Route index element={<Navigate to="shifts" replace />} />
       <Route path="shifts" element={<ExecutorDashboard />} />
-      <Route path="profile" element={<ExecutorProfile />} /> {/* ← ДОБАВИЛИ профиль */}
+      <Route path="assignments" element={<ExecutorAssignments />} />
+      <Route path="profile" element={<ExecutorProfile />} />
     </Routes>
   )
 }
@@ -74,8 +65,7 @@ function App() {
           }>
             <Route index element={<RoleRedirect />} />
             <Route path="initiator/*" element={<InitiatorRoutes />} />
-            <Route path="executor/*" element={<ExecutorRoutes />} /> {/* ← ИЗМЕНИЛИ: на ExecutorRoutes */}
-            <Route path="brigadier/*" element={<BrigadierDashboard />} />
+            <Route path="executor/*" element={<ExecutorRoutes />} />
             <Route path="dispatcher/*" element={<DispatcherDashboard />} />
           </Route>
         </Routes>

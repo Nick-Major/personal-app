@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { executorService } from '../../services/executorService';
 import { useAuth } from '../../context/AuthContext';
-import './Dashboard.css';
+import './ExecutorDashboard.css';
 
 const ExecutorDashboard = () => {
   const { user } = useAuth();

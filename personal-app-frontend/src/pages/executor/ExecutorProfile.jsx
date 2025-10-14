@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import './Profile.css';
+import './ExecutorProfile.css';
 
 const ExecutorProfile = () => {
   const { user } = useAuth();

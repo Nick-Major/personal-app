@@ -22,10 +22,28 @@ const Login = () => {
       console.log('Login successful, redirecting...')
       console.log('User roles:', response.user.roles)
 
-      // Редирект на основе роли - ИСПРАВЛЕНО: берем name роли
-      const role = response.user.roles[0]?.name || 'initiator'
-      console.log('Redirecting to role:', role)
-      navigate(`/${role}/dashboard`)
+      // Редирект на основе роли - ИСПРАВЛЕННАЯ ЛОГИКА
+      const role = response.user.roles[0]?.name
+      
+      let redirectPath = '/executor'; // значение по умолчанию
+      
+      switch(role) {
+        case 'initiator':
+          redirectPath = '/initiator';
+          break;
+        case 'executor':
+        case 'brigadier':  // ← ДОБАВИЛИ brigadier!
+          redirectPath = '/executor';
+          break;
+        case 'dispatcher':
+          redirectPath = '/dispatcher';
+          break;
+        default:
+          redirectPath = '/executor';
+      }
+      
+      console.log('Redirecting to:', redirectPath)
+      navigate(redirectPath)
     } catch (err) {
       console.log('Login error:', err)
       setError(err.response?.data?.message || 'Неверный email или пароль')

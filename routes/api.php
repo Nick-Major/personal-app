@@ -101,7 +101,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/shifts/{shift}/photos', [ExecutorController::class, 'addPhoto']);
         
         // === МАРШРУТЫ БРИГАДИРА (ДОБАВЛЯЕМ) ===
-        Route::get('/brigadier-assignments', [ExecutorController::class, 'getBrigadierAssignments']);
+        Route::get('/brigadier-assignments/pending', [ExecutorController::class, 'getPendingAssignments']);
+        Route::get('/brigadier-assignments/confirmed', [ExecutorController::class, 'getConfirmedAssignments']);
         Route::post('/brigadier-assignments/{assignment}/confirm', [ExecutorController::class, 'confirmAssignment']);
         Route::post('/brigadier-assignments/{assignment}/reject', [ExecutorController::class, 'rejectAssignment']);
         Route::get('/work-requests', [ExecutorController::class, 'getBrigadierRequests']);

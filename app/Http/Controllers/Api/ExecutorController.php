@@ -201,23 +201,39 @@ class ExecutorController extends Controller
 
     // === МЕТОДЫ БРИГАДИРА ===
 
-    /**
-     * Получить назначения на подтверждение
-     */
-    public function getBrigadierAssignments(Request $request)
+    // Для ожидающих подтверждения
+    public function getPendingAssignments(Request $request)
     {
         $user = $request->user();
 
         $assignments = BrigadierAssignment::with([
                 'initiator',
                 'assignmentDates' => function($query) {
-                    $query->where('status', 'pending')
-                          ->whereDate('assignment_date', '>=', today())
-                          ->orderBy('assignment_date');
+                    $query->whereDate('assignment_date', '>=', today())
+                        ->orderBy('assignment_date');
                 }
             ])
             ->where('brigadier_id', $user->id)
             ->where('status', 'pending')
+            ->get();
+
+        return response()->json($assignments);
+    }
+
+    // Для активных/подтвержденных
+    public function getConfirmedAssignments(Request $request)
+    {
+        $user = $request->user();
+
+        $assignments = BrigadierAssignment::with([
+                'initiator',
+                'assignmentDates' => function($query) {
+                    $query->whereDate('assignment_date', '>=', today())
+                        ->orderBy('assignment_date');
+                }
+            ])
+            ->where('brigadier_id', $user->id)
+            ->whereIn('status', ['confirmed', 'active'])
             ->get();
 
         return response()->json($assignments);

@@ -6,7 +6,7 @@ import DatePicker from 'react-datepicker';
 import { registerLocale, setDefaultLocale } from 'react-datepicker';
 import { ru } from 'date-fns/locale/ru';
 import 'react-datepicker/dist/react-datepicker.css';
-import { brigadierService } from '../../services/brigadierService';
+import { executorService } from '../../services/executorService';
 import { useAuth } from '../../context/AuthContext';
 import { format, parse } from 'date-fns';
 
@@ -48,7 +48,7 @@ const BrigadierManagement = () => {
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await brigadierService.getAssignments();
+      const data = await executorService.getAssignments();
       console.log('Loaded assignments:', data);
       
       // Правильно обрабатываем структуру ответа
@@ -72,7 +72,7 @@ const BrigadierManagement = () => {
 
   const loadAvailableExecutors = async () => {
     try {
-      const data = await brigadierService.getAllBrigadiers();
+      const data = await executorService.getAllBrigadiers();
       console.log('Loaded brigadiers:', data);
       setAvailableExecutors(data);
     } catch (error) {
@@ -172,7 +172,7 @@ const BrigadierManagement = () => {
         status: 'pending'
       };
       console.info('[BrigadierManagement] creating assignment with payload:', payload);
-      await brigadierService.createAssignment(payload);
+      await executorService.createAssignment(payload);
 
       await loadAssignments();
       
@@ -213,7 +213,7 @@ const BrigadierManagement = () => {
   const handleUnassignBrigadier = async (assignmentId) => {
     if (window.confirm('Вы уверены, что хотите отменить назначение?')) {
       try {
-        await brigadierService.deleteAssignment(assignmentId);
+        await executorService.deleteAssignment(assignmentId);
         await loadAssignments(); // Перезагружаем список
         alert('Назначение отменено');
       } catch (error) {
