@@ -120,7 +120,8 @@ class User extends Authenticatable
     // === МЕТОДЫ ===
     public function getFullNameAttribute()
     {
-        return trim("{$this->surname} {$this->name} {$this->patronymic}");
+        $parts = array_filter([$this->surname, $this->name, $this->patronymic]);
+        return implode(' ', $parts) ?: $this->name;
     }
 
     public function canCreateRequests($date)
@@ -132,5 +133,45 @@ class User extends Authenticatable
             })
             ->where('can_create_requests', true)
             ->exists();
+    }
+
+    // Определить текущую роль для ЛК
+    public function getExecutorRole($date = null)
+    {
+        $date = $date ?: now();
+        
+        // Если есть подтвержденные назначения бригадиром на дату
+        $isBrigadier = $this->brigadierAssignments()
+            ->whereHas('assignmentDates', function($q) use ($date) {
+                $q->whereDate('assignment_date', $date)
+                  ->where('status', 'confirmed');
+            })
+            ->exists();
+            
+        if ($isBrigadier) {
+            $canCreate = $this->brigadierAssignments()
+                ->whereHas('assignmentDates', function($q) use ($date) {
+                    $q->whereDate('assignment_date', $date)
+                      ->where('status', 'confirmed');
+                })
+                ->where('can_create_requests', true)
+                ->exists();
+                
+            return $canCreate ? 'brigadier_with_rights' : 'brigadier';
+        }
+        
+        return 'executor';
+    }
+
+    // Получить отображаемое имя роли
+    public function getExecutorRoleDisplay($date = null)
+    {
+        $role = $this->getExecutorRole($date);
+        $roles = [
+            'executor' => 'Исполнитель',
+            'brigadier' => 'Бригадир', 
+            'brigadier_with_rights' => 'Бригадир (может создавать заявки)'
+        ];
+        return $roles[$role] ?? 'Исполнитель';
     }
 }

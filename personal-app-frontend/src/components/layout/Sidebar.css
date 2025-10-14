@@ -1,11 +1,11 @@
 .sidebar {
-  width: 200px; /* Уменьшили с 280px */
+  width: 200px;
   background-color: #2c3e50;
   color: white;
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Занимает всю высоту */
-  position: fixed; /* Фиксированное положение */
+  height: 100vh;
+  position: fixed;
   left: 0;
   top: 0;
   overflow-y: auto;
@@ -15,6 +15,7 @@
   padding: 15px;
   border-bottom: 1px solid #34495e;
   background: #34495e;
+  position: relative;
 }
 
 .sidebar-title {
@@ -22,6 +23,17 @@
   font-size: 16px;
   font-weight: 600;
   color: #ecf0f1;
+}
+
+.user-role-badge {
+  background: #27ae60;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  font-weight: bold;
+  margin-top: 8px;
+  display: inline-block;
 }
 
 .sidebar-content {
@@ -64,16 +76,17 @@
   margin: 0;
 }
 
+/* Общие стили для всех ссылок */
 .nav-link {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 15px;
+  padding: 12px 15px;
   color: #ecf0f1;
   text-decoration: none;
   transition: all 0.3s ease;
   border-left: 3px solid transparent;
   font-size: 13px;
+  gap: 10px;
 }
 
 .nav-link:hover {
@@ -86,22 +99,138 @@
   background-color: rgba(52, 152, 219, 0.2);
   color: #3498db;
   border-left-color: #3498db;
+  font-weight: 600;
 }
 
 .nav-link-text {
   font-size: 13px;
+  flex: 1;
+}
+
+.nav-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
 }
 
 .nav-badge {
   background: #e74c3c;
   color: white;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: 10px;
   font-size: 10px;
   font-weight: 600;
+  min-width: 18px;
+  text-align: center;
 }
 
-/* Для старых меню (не диспетчер) */
+/* Специфичные стили для разных типов меню */
+.sidebar-nav-list .nav-link {
+  justify-content: flex-start;
+}
+
 .sidebar-nav .nav-link {
   justify-content: flex-start;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-section {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Прокрутка */
+.sidebar-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: #34495e;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: #3498db;
+  border-radius: 2px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: #2980b9;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 70px;
+  }
+  
+  .sidebar-header {
+    padding: 15px 10px;
+  }
+  
+  .sidebar-title,
+  .sidebar-section-title,
+  .nav-link-text,
+  .user-role-badge {
+    display: none;
+  }
+  
+  .nav-link {
+    justify-content: center;
+    padding: 15px 10px;
+  }
+  
+  .nav-icon {
+    font-size: 18px;
+    margin: 0;
+  }
+}
+
+/* Темная тема дополнения */
+.sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Статус онлайн/офлайн индикатор */
+.user-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #27ae60;
+  margin-right: 8px;
+}
+
+.user-status.offline {
+  background: #95a5a6;
+}
+
+/* Подсветка активного элемента */
+.nav-link.active .nav-icon {
+  color: #3498db;
+}
+
+/* Иконки специальных пунктов меню */
+.nav-link[href*="/executor"] .nav-icon {
+  color: #3498db;
+}
+
+.nav-link[href*="/dispatcher"] .nav-icon {
+  color: #9b59b6;
+}
+
+.nav-link[href*="/initiator"] .nav-icon {
+  color: #e67e22;
+}
+
+.nav-link[href*="/brigadier"] .nav-icon {
+  color: #2ecc71;
 }

@@ -28,12 +28,12 @@ class AuthController extends Controller
 
         // Удаляем существующие токены пользователя (опционально)
         // $user->tokens()->delete();
-        
+
         // Создаем новый токен
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user->load('roles'),
+            'user' => $this->getUserData($user),
             'token' => $token,
         ]);
     }
@@ -42,13 +42,42 @@ class AuthController extends Controller
     {
         // Удаляем текущий токен
         $request->user()->currentAccessToken()->delete();
-        
+
         return response()->json(['message' => 'Logged out successfully']);
     }
 
     public function user(Request $request)
     {
-        // Возвращаем пользователя с ролями
-        return response()->json($request->user()->load('roles'));
+        // Возвращаем пользователя с полными данными для ЛК
+        return response()->json($this->getUserData($request->user()));
+    }
+
+    /**
+     * Форматируем данные пользователя для фронтенда
+     */
+    private function getUserData(User $user)
+    {
+        $user->load('roles.permissions', 'specialties');
+        
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'surname' => $user->surname,
+            'patronymic' => $user->patronymic,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'full_name' => $user->full_name,
+            'roles' => $user->roles->map(function($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'permissions' => $role->permissions->pluck('name')
+                ];
+            }),
+            'specialties' => $user->specialties,
+            'executor_role' => $user->getExecutorRole(),
+            'executor_role_display' => $user->getExecutorRoleDisplay(),
+            'is_always_brigadier' => $user->is_always_brigadier,
+        ];
     }
 }

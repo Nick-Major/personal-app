@@ -5,6 +5,7 @@ import Layout from './components/layout/Layout'
 import Login from './pages/auth/Login'
 import InitiatorRoutes from './pages/initiator/InitiatorRoutes'
 import ExecutorDashboard from './pages/executor/Dashboard'
+import ExecutorProfile from './pages/executor/Profile' // ← ДОБАВИЛИ
 import BrigadierDashboard from './pages/brigadier/Dashboard'
 import DispatcherDashboard from './pages/dispatcher/Dashboard'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -38,7 +39,7 @@ const RoleRedirect = () => {
       console.log('Redirecting to initiator dashboard')
       return <Navigate to="/initiator/dashboard" replace />
     case 'executor':
-      return <Navigate to="/executor/dashboard" replace />
+      return <Navigate to="/executor/shifts" replace />
     case 'brigadier':
       return <Navigate to="/brigadier/dashboard" replace />
     case 'dispatcher':
@@ -47,6 +48,17 @@ const RoleRedirect = () => {
       console.log('Unknown role, defaulting to initiator')
       return <Navigate to="/initiator/dashboard" replace />
   }
+}
+
+// Компонент для маршрутов исполнителя
+const ExecutorRoutes = () => {
+  return (
+    <Routes>
+      <Route index element={<Navigate to="shifts" replace />} /> {/* ← РЕДИРЕКТ на смены */}
+      <Route path="shifts" element={<ExecutorDashboard />} />
+      <Route path="profile" element={<ExecutorProfile />} /> {/* ← ДОБАВИЛИ профиль */}
+    </Routes>
+  )
 }
 
 function App() {
@@ -62,7 +74,7 @@ function App() {
           }>
             <Route index element={<RoleRedirect />} />
             <Route path="initiator/*" element={<InitiatorRoutes />} />
-            <Route path="executor/*" element={<ExecutorDashboard />} />
+            <Route path="executor/*" element={<ExecutorRoutes />} /> {/* ← ИЗМЕНИЛИ: на ExecutorRoutes */}
             <Route path="brigadier/*" element={<BrigadierDashboard />} />
             <Route path="dispatcher/*" element={<DispatcherDashboard />} />
           </Route>

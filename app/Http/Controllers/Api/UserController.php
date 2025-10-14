@@ -84,11 +84,24 @@ class UserController extends Controller
     // Новый метод для получения всех бригадиров
     public function getBrigadiers()
     {
-        // Показываем всех исполнителей (executor) как потенциальных бригадиров
-        $executors = User::role('executor')
-            ->select('id', 'name', 'email', 'specialization', 'phone')
-            ->get();
-        
-        return response()->json($executors);
+        // Для выбора бригадиров показываем всех потенциальных кандидатов
+        $brigadiers = User::whereHas('roles', function($query) {
+                $query->whereIn('name', ['brigadier', 'executor']);
+            })
+            ->with('specialties')
+            ->get()
+            ->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'full_name' => $user->full_name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'specialties' => $user->specialties->pluck('name'),
+                    'is_always_brigadier' => $user->is_always_brigadier,
+                    'roles' => $user->roles->pluck('name')
+                ];
+            });
+
+        return response()->json($brigadiers);
     }
 }

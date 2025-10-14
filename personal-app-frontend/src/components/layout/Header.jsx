@@ -4,7 +4,14 @@ import './Header.css';
 
 const Header = ({ user, onLogout }) => {
   // Функция для красивого отображения роли
-  const getRoleDisplayName = (role) => {
+  const getRoleDisplayName = () => {
+    // Используем executor_role_display из бэкенда если есть
+    if (user?.executor_role_display) {
+      return user.executor_role_display;
+    }
+    
+    // Или преобразуем системную роль
+    const role = user?.roles?.[0]?.name;
     const roleNames = {
       'initiator': 'Инициатор',
       'executor': 'Исполнитель', 
@@ -12,7 +19,7 @@ const Header = ({ user, onLogout }) => {
       'dispatcher': 'Диспетчер',
       'admin': 'Администратор'
     };
-    return roleNames[role] || role;
+    return roleNames[role] || role || 'Не назначена';
   };
 
   return (
@@ -25,11 +32,9 @@ const Header = ({ user, onLogout }) => {
         {/* Информация о пользователе */}
         <div className="user-info">
           <div className="user-details">
-            <span className="user-name">{user?.name || 'Пользователь'}</span>
+            <span className="user-name">{user?.full_name || user?.name || 'Пользователь'}</span>
             <span className="user-role">
-              {user?.roles?.[0]?.name ? 
-                getRoleDisplayName(user.roles[0].name) : 
-                'Не назначена'}
+              {getRoleDisplayName()}
             </span>
           </div>
         </div>

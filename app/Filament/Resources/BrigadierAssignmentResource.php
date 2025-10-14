@@ -27,14 +27,16 @@ class BrigadierAssignmentResource extends Resource
                             ->relationship('brigadier', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name),
                             
                         Forms\Components\Select::make('initiator_id')
                             ->label('Инициатор назначения')
                             ->relationship('initiator', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name),
                             
                         Forms\Components\Toggle::make('can_create_requests')
                             ->label('Может создавать заявки')
@@ -66,7 +68,7 @@ class BrigadierAssignmentResource extends Resource
                                     ->label('Статус подтверждения')
                                     ->options([
                                         'pending' => 'Ожидает',
-                                        'confirmed' => 'Подтверждено',
+                                        'confirmed' => 'Подтверждено', 
                                         'rejected' => 'Отклонено',
                                     ])
                                     ->required()
@@ -89,14 +91,14 @@ class BrigadierAssignmentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('brigadier.name')
+                Tables\Columns\TextColumn::make('brigadier.full_name')
                     ->label('Бригадир')
-                    ->searchable()
+                    ->searchable(['name', 'surname'])
                     ->sortable(),
                     
-                Tables\Columns\TextColumn::make('initiator.name')
+                Tables\Columns\TextColumn::make('initiator.full_name')
                     ->label('Инициатор')
-                    ->searchable()
+                    ->searchable(['name', 'surname'])
                     ->sortable(),
                     
                 Tables\Columns\IconColumn::make('can_create_requests')
@@ -108,14 +110,14 @@ class BrigadierAssignmentResource extends Resource
                     ->badge()
                     ->color(fn ($state) => $state === 'active' ? 'success' : 'gray'),
                     
-                Tables\Columns\TextColumn::make('assignmentDates_count')
+                Tables\Columns\TextColumn::make('dates_count')
                     ->label('Кол-во дат')
-                    ->counts('assignmentDates')
+                    ->getStateUsing(fn ($record) => $record->assignment_dates()->count())
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('confirmed_dates_count')
                     ->label('Подтверждено дат')
-                    ->counts(['assignmentDates' => fn ($query) => $query->where('status', 'confirmed')])
+                    ->getStateUsing(fn ($record) => $record->assignment_dates()->where('status', 'confirmed')->count())
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('created_at')
@@ -128,7 +130,7 @@ class BrigadierAssignmentResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Статус назначения')
                     ->options([
-                        'active' => 'Активно',
+                        'active' => 'Активно', 
                         'inactive' => 'Неактивно',
                     ]),
                     
@@ -155,9 +157,7 @@ class BrigadierAssignmentResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            // Связи с датами назначений
-        ];
+        return [];
     }
 
     public static function getPages(): array

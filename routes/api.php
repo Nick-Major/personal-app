@@ -99,7 +99,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         
         // Фото
         Route::post('/shifts/{shift}/photos', [ExecutorController::class, 'addPhoto']);
+        
+        // === МАРШРУТЫ БРИГАДИРА (ДОБАВЛЯЕМ) ===
+        Route::get('/brigadier-assignments', [ExecutorController::class, 'getBrigadierAssignments']);
+        Route::post('/brigadier-assignments/{assignment}/confirm', [ExecutorController::class, 'confirmAssignment']);
+        Route::post('/brigadier-assignments/{assignment}/reject', [ExecutorController::class, 'rejectAssignment']);
+        Route::get('/work-requests', [ExecutorController::class, 'getBrigadierRequests']);
     });
-
-    
 });

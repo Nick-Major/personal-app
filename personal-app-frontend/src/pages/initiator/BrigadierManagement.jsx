@@ -416,7 +416,7 @@ const BrigadierManagement = () => {
                 <tr key={assignment.id}>
                   <td>
                     <div className="brigadier-info">
-                      <strong>{assignment.brigadier?.name || 'N/A'}</strong>
+                      <strong>{assignment.brigadier?.full_name || assignment.brigadier?.name || 'N/A'}</strong>
                     </div>
                   </td>
                   <td>{assignment.brigadier?.specialization || 'N/A'}</td>
@@ -508,14 +508,16 @@ const BrigadierManagement = () => {
                   {(Array.isArray(availableExecutors) ? availableExecutors : []).filter(ex => {
                     if (!executorSearch) return true;
                     const q = executorSearch.toLowerCase().trim();
-                    const name = String(ex.name || '').toLowerCase();
-                    const spec = Array.isArray(ex.specialization)
+                    const name = String(ex.full_name || ex.name || '').toLowerCase();
+                    const spec = Array.isArray(ex.specialties)
                       ? ex.specialization.join(' ').toLowerCase()
                       : String(ex.specialization || '').toLowerCase();
                     return name.includes(q) || spec.includes(q);
                   }).map(executor => (
                     <option key={executor.id} value={executor.id}>
-                      {executor.name} ({Array.isArray(executor.specialization) ? executor.specialization.join(', ') : executor.specialization})
+                      {executor.full_name || executor.name}
+                      {executor.specialties && executor.specialties.length > 0 && 
+                        ` (${executor.specialties.join(', ')})`}
                     </option>
                   ))}
                 </select>
