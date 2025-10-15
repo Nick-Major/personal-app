@@ -15,16 +15,20 @@ class WorkRequest extends Model
         'brigadier_id',
         'specialty_id',
         'work_type_id',
-        'executor_type', // 'our_staff', 'contractor'
+        'executor_type',
         'workers_count',
         'shift_duration',
-        'work_date', // ДОБАВЛЕНО - дата выполнения работ
+        'work_date',
         'start_time',
-        'project',
-        'purpose',
+        // === ОБНОВЛЕННЫЕ ПОЛЯ ===
+        'project_id',       // вместо 'project'
+        'purpose_id',       // вместо 'purpose' 
+        'address_id',       // ДОБАВЛЕНО
+        // ===
         'payer_company',
+        'is_custom_payer',
         'comments',
-        'status', // 'draft', 'published', 'in_progress', 'staffed', 'completed'
+        'status',
         'dispatcher_id',
         'published_at',
         'staffed_at',
@@ -37,6 +41,7 @@ class WorkRequest extends Model
         'published_at' => 'datetime',
         'staffed_at' => 'datetime',
         'completed_at' => 'datetime',
+        'is_custom_payer' => 'boolean',
     ];
 
     // === СВЯЗИ ===
@@ -65,6 +70,23 @@ class WorkRequest extends Model
         return $this->belongsTo(WorkType::class);
     }
 
+    // === НОВЫЕ СВЯЗИ ===
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function purpose()
+    {
+        return $this->belongsTo(Purpose::class);
+    }
+
+    public function address()
+    {
+        return $this->belongsTo(Address::class);
+    }
+
+    // === СУЩЕСТВУЮЩИЕ СВЯЗИ ===
     public function shifts()
     {
         return $this->hasMany(Shift::class, 'request_id');
@@ -80,10 +102,33 @@ class WorkRequest extends Model
         return $this->hasOneThrough(
             BrigadierAssignmentDate::class,
             BrigadierAssignment::class,
-            'brigadier_id', // Внешний ключ в BrigadierAssignment
-            'assignment_id', // Внешний ключ в BrigadierAssignmentDate
-            'brigadier_id', // Локальный ключ в WorkRequest
-            'id' // Локальный ключ в BrigadierAssignment
+            'brigadier_id',
+            'assignment_id',
+            'brigadier_id',
+            'id'
         )->whereDate('assignment_date', $this->work_date);
+    }
+
+    // === МЕТОД ДЛЯ ОПРЕДЕЛЕНИЯ ПЛАТЕЛЬЩИКА ===
+    public function determinePayer()
+    {
+        if ($this->is_custom_payer) {
+            return $this->payer_company;
+        }
+
+        // Ищем правило по приоритету
+        $rule = \App\Models\PayerRule::where('purpose_id', $this->purpose_id)
+            ->where(function($query) {
+                $query->where('address_id', $this->address_id)
+                      ->orWhereHas('addressProgram', function($q) {
+                          $q->where('address_id', $this->address_id)
+                            ->where('project_id', $this->project_id);
+                      })
+                      ->orWhere('project_id', $this->project_id);
+            })
+            ->orderBy('priority', 'asc')
+            ->first();
+
+        return $rule?->payer_company;
     }
 }
