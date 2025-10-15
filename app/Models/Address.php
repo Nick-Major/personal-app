@@ -10,19 +10,24 @@ class Address extends Model
     use HasFactory;
 
     protected $fillable = [
+        'project_id',
         'name',
-        'address',
-        'description',
-        'coordinates'
+        'full_address',
+        'description'
     ];
 
-    public function addressPrograms()
+    public function project()
     {
-        return $this->hasMany(AddressProgram::class);
+        return $this->belongsTo(Project::class);
     }
 
-    public function payerRules()
+    public function addressRules()
     {
-        return $this->hasMany(PayerRule::class);
+        return $this->hasMany(PurposeAddressRule::class);
+    }
+
+    public function workRequests()
+    {
+        return $this->hasMany(WorkRequest::class);
     }
 }

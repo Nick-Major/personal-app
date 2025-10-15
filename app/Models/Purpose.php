@@ -10,26 +10,31 @@ class Purpose extends Model
     use HasFactory;
 
     protected $fillable = [
-        'project_id', // ДОБАВЛЯЕМ
+        'project_id',
         'name',
         'description',
-        'category',
+        'has_custom_payer_selection',
         'is_active'
     ];
 
     protected $casts = [
+        'has_custom_payer_selection' => 'boolean',
         'is_active' => 'boolean'
     ];
 
-    // ОБРАТНАЯ СВЯЗЬ
     public function project()
     {
         return $this->belongsTo(Project::class);
     }
 
-    public function payerRules()
+    public function payerCompanies()
     {
-        return $this->hasMany(PayerRule::class);
+        return $this->hasMany(PurposePayerCompany::class);
+    }
+
+    public function addressRules()
+    {
+        return $this->hasMany(PurposeAddressRule::class);
     }
 
     public function workRequests()

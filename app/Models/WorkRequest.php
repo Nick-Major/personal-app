@@ -10,30 +10,29 @@ class WorkRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_number',
-        'initiator_id',
-        'brigadier_id',
-        'specialty_id',
-        'work_type_id',
-        'executor_type',
-        'workers_count',
-        'shift_duration',
-        'work_date',
-        'start_time',
-        // === ОБНОВЛЕННЫЕ ПОЛЯ ===
-        'project_id',       // вместо 'project'
-        'purpose_id',       // вместо 'purpose' 
-        'address_id',       // ДОБАВЛЕНО
-        // ===
-        'payer_company',
-        'is_custom_payer',
-        'comments',
-        'status',
-        'dispatcher_id',
-        'published_at',
-        'staffed_at',
-        'completed_at',
-    ];
+    'request_number',
+    'project_id',
+    'purpose_id', 
+    'address_id',
+    'selected_payer_company', // НОВОЕ ПОЛЕ
+    'initiator_id',
+    'brigadier_id',
+    'specialty_id',
+    'work_type_id',
+    'executor_type',
+    'workers_count',
+    'shift_duration',
+    'work_date',
+    'start_time',
+    // 'payer_company', // УДАЛЯЕМ СТАРОЕ ПОЛЕ
+    'is_custom_payer',
+    'comments',
+    'status',
+    'dispatcher_id',
+    'published_at',
+    'staffed_at',
+    'completed_at',
+];
 
     protected $casts = [
         'work_date' => 'date',
@@ -112,8 +111,8 @@ class WorkRequest extends Model
     // === МЕТОД ДЛЯ ОПРЕДЕЛЕНИЯ ПЛАТЕЛЬЩИКА ===
     public function determinePayer()
     {
-        if ($this->is_custom_payer) {
-            return $this->payer_company;
+        if ($this->purpose && $this->purpose->has_custom_payer_selection && $this->selected_payer_company) {
+            return $this->selected_payer_company;
         }
 
         // Ищем правило по приоритету

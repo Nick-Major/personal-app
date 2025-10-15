@@ -11,9 +11,10 @@ class Project extends Model
 
     protected $fillable = [
         'name',
-        'description', 
+        'description',
         'start_date',
         'end_date',
+        'default_payer_company',
         'status'
     ];
 
@@ -22,15 +23,14 @@ class Project extends Model
         'end_date' => 'date',
     ];
 
-    public function addressPrograms()
-    {
-        return $this->hasMany(AddressProgram::class);
-    }
-
-    // СВЯЗЬ ОДИН-КО-МНОГИМ
     public function purposes()
     {
         return $this->hasMany(Purpose::class);
+    }
+
+    public function addresses()
+    {
+        return $this->hasMany(Address::class);
     }
 
     public function workRequests()
@@ -38,8 +38,13 @@ class Project extends Model
         return $this->hasMany(WorkRequest::class);
     }
 
-    public function payerRules()
+    public function payerCompanies()
     {
-        return $this->hasMany(PayerRule::class);
+        return $this->hasManyThrough(PurposePayerCompany::class, Purpose::class);
+    }
+
+    public function addressRules()
+    {
+        return $this->hasManyThrough(PurposeAddressRule::class, Purpose::class);
     }
 }
