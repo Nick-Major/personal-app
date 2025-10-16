@@ -111,23 +111,27 @@ class WorkRequest extends Model
     // === МЕТОД ДЛЯ ОПРЕДЕЛЕНИЯ ПЛАТЕЛЬЩИКА ===
     public function determinePayer()
     {
+        // Если можно выбирать вручную - возвращаем выбранную
         if ($this->purpose && $this->purpose->has_custom_payer_selection && $this->selected_payer_company) {
             return $this->selected_payer_company;
         }
 
-        // Ищем правило по приоритету
-        $rule = \App\Models\PayerRule::where('purpose_id', $this->purpose_id)
-            ->where(function($query) {
-                $query->where('address_id', $this->address_id)
-                      ->orWhereHas('addressProgram', function($q) {
-                          $q->where('address_id', $this->address_id)
-                            ->where('project_id', $this->project_id);
-                      })
-                      ->orWhere('project_id', $this->project_id);
-            })
-            ->orderBy('priority', 'asc')
+        // Ищем правило по адресу (теперь с project_id для оптимизации)
+        if ($this->address_id) {
+            $rule = PurposeAddressRule::where('project_id', $this->project_id)
+                ->where('purpose_id', $this->purpose_id)
+                ->where('address_id', $this->address_id)
+                ->first();
+            
+            if ($rule) return $rule->payer_company;
+        }
+
+        // Общее правило для назначения (без адреса)
+        $generalRule = PurposeAddressRule::where('project_id', $this->project_id)
+            ->where('purpose_id', $this->purpose_id)
+            ->whereNull('address_id')
             ->first();
 
-        return $rule?->payer_company;
+        return $generalRule?->payer_company;
     }
 }

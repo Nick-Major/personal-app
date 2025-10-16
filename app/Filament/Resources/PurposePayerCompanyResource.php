@@ -28,12 +28,27 @@ class PurposePayerCompanyResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
+                        Forms\Components\Select::make('project_id')
+                            ->label('Проект')
+                            ->relationship('project', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->reactive(),
+                        
                         Forms\Components\Select::make('purpose_id')
                             ->label('Назначение')
                             ->relationship('purpose', 'name')
-                            ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->options(function ($get) {
+                                $projectId = $get('project_id');
+                                if (!$projectId) {
+                                    return \App\Models\Purpose::all()->pluck('name', 'id');
+                                }
+                                return \App\Models\Purpose::where('project_id', $projectId)->pluck('name', 'id');
+                            })
+                            ->required(),
                         
                         Forms\Components\TextInput::make('payer_company')
                             ->label('Компания-плательщик')
@@ -59,6 +74,11 @@ class PurposePayerCompanyResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('project.name')
+                    ->label('Проект')
+                    ->searchable()
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('purpose.name')
                     ->label('Назначение')
                     ->searchable()
@@ -83,6 +103,9 @@ class PurposePayerCompanyResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('project')
+                    ->relationship('project', 'name'),
+                
                 Tables\Filters\SelectFilter::make('purpose')
                     ->relationship('purpose', 'name'),
             ])

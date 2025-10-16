@@ -22,9 +22,12 @@ class PurposeAddressRulesRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Hidden::make('project_id')
+                    ->default(fn () => $this->getOwnerRecord()->project_id),
+                
                 Forms\Components\Select::make('address_id')
                     ->label('Адрес')
-                    ->relationship('address', 'name')
+                    ->options(fn () => $this->getOwnerRecord()->project->addresses->pluck('name', 'id'))
                     ->searchable()
                     ->preload()
                     ->helperText('Оставьте пустым для общего правила')

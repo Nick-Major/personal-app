@@ -28,12 +28,27 @@ class PurposeAddressRuleResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Условия правила')
                     ->schema([
-                        Forms\Components\Select::make('purpose_id')
-                            ->label('Назначение')
-                            ->relationship('purpose', 'name')
+                        Forms\Components\Select::make('project_id')
+                            ->label('Проект')
+                            ->relationship('project', 'name')
                             ->required()
                             ->searchable()
                             ->preload()
+                            ->reactive(),
+                        
+                        Forms\Components\Select::make('purpose_id')
+                            ->label('Назначение')
+                            ->relationship('purpose', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->options(function ($get) {
+                                $projectId = $get('project_id');
+                                if (!$projectId) {
+                                    return \App\Models\Purpose::all()->pluck('name', 'id');
+                                }
+                                return \App\Models\Purpose::where('project_id', $projectId)->pluck('name', 'id');
+                            })
+                            ->required()
                             ->reactive(),
                         
                         Forms\Components\Select::make('address_id')
@@ -41,6 +56,13 @@ class PurposeAddressRuleResource extends Resource
                             ->relationship('address', 'name')
                             ->searchable()
                             ->preload()
+                            ->options(function ($get) {
+                                $projectId = $get('project_id');
+                                if (!$projectId) {
+                                    return \App\Models\Address::all()->pluck('name', 'id');
+                                }
+                                return \App\Models\Address::where('project_id', $projectId)->pluck('name', 'id');
+                            })
                             ->helperText('Оставьте пустым для общего правила')
                             ->nullable(),
                         
@@ -58,18 +80,6 @@ class PurposeAddressRuleResource extends Resource
                             ->maxValue(10)
                             ->helperText('1 - высший приоритет'),
                     ])->columns(2),
-                
-                Forms\Components\Section::make('Информация')
-                    ->schema([
-                        Forms\Components\Placeholder::make('rule_info')
-                            ->content(function ($get) {
-                                $purpose = $get('purpose_id') ? \App\Models\Purpose::find($get('purpose_id'))?->name : '...';
-                                $address = $get('address_id') ? \App\Models\Address::find($get('address_id'))?->name : 'любой адрес';
-                                
-                                return "Правило для: {$purpose} → {$address}";
-                            }),
-                    ])
-                    ->hidden(fn ($get) => !$get('purpose_id')),
             ]);
     }
 
@@ -77,6 +87,11 @@ class PurposeAddressRuleResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('project.name')
+                ->label('Проект')
+                ->searchable()
+                ->sortable(),
+
                 Tables\Columns\TextColumn::make('purpose.name')
                     ->label('Назначение')
                     ->searchable()
@@ -106,6 +121,9 @@ class PurposeAddressRuleResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('project')
+                    ->relationship('project', 'name'),
+                
                 Tables\Filters\SelectFilter::make('purpose')
                     ->relationship('purpose', 'name'),
                 

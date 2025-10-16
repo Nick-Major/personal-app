@@ -22,6 +22,9 @@ class PurposePayerCompaniesRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Hidden::make('project_id')
+                    ->default(fn () => $this->getOwnerRecord()->project_id),
+                
                 Forms\Components\TextInput::make('payer_company')
                     ->label('Компания-плательщик')
                     ->required()
