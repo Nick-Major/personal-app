@@ -28,12 +28,18 @@ class AddressResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Информация об адресе')
                     ->schema([
+                        Forms\Components\Select::make('project_id')
+                            ->relationship('project', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+
                         Forms\Components\TextInput::make('name')
                             ->label('Название места')
                             ->required()
                             ->maxLength(255),
                         
-                        Forms\Components\Textarea::make('address')
+                        Forms\Components\Textarea::make('full_address') // ИСПРАВЛЕНО: было address
                             ->label('Полный адрес')
                             ->required()
                             ->rows(2)
@@ -43,10 +49,6 @@ class AddressResource extends Resource
                             ->label('Описание')
                             ->rows(2)
                             ->columnSpanFull(),
-                        
-                        Forms\Components\TextInput::make('coordinates')
-                            ->label('Координаты (широта, долгота)')
-                            ->placeholder('55.7558, 37.6173'),
                     ]),
             ]);
     }
@@ -55,12 +57,17 @@ class AddressResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('project.name')
+                    ->label('Проект')
+                    ->sortable()
+                    ->searchable(),
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
                     ->sortable(),
                 
-                Tables\Columns\TextColumn::make('address')
+                Tables\Columns\TextColumn::make('full_address') // ИСПРАВЛЕНО: было address
                     ->label('Адрес')
                     ->searchable()
                     ->limit(50),
@@ -70,13 +77,13 @@ class AddressResource extends Resource
                     ->limit(30)
                     ->searchable(),
                 
-                Tables\Columns\TextColumn::make('address_programs_count')
-                    ->label('В программах')
-                    ->counts('addressPrograms'),
-                
-                Tables\Columns\TextColumn::make('payer_rules_count')
+                Tables\Columns\TextColumn::make('addressRules_count') // ИСПРАВЛЕНО: было address_programs_count
                     ->label('Правил оплаты')
-                    ->counts('payerRules'),
+                    ->counts('addressRules'),
+                
+                Tables\Columns\TextColumn::make('workRequests_count') // ДОБАВЛЕНО: вместо payer_rules_count
+                    ->label('Заявок')
+                    ->counts('workRequests'),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -85,7 +92,10 @@ class AddressResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('project')
+                    ->relationship('project', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

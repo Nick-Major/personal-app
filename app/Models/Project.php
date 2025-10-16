@@ -65,4 +65,15 @@ class Project extends Model
     {
         return $this->purposes()->where('is_active', true)->count();
     }
+
+    // Добавить в класс Project
+    public function getAddressesCountAttribute()
+    {
+        return $this->addresses()->count();
+    }
+
+    public function getPurposesCountAttribute()
+    {
+        return $this->purposes()->count();
+    }
 }
