@@ -8,67 +8,63 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class AddressProgramsRelationManager extends RelationManager
+class PurposePayerCompaniesRelationManager extends RelationManager
 {
-    protected static string $relationship = 'addressPrograms';
+    protected static string $relationship = 'payerCompanies';
 
-    protected static ?string $title = 'Адресные программы';
+    protected static ?string $title = 'Варианты оплаты';
 
-    protected static ?string $label = 'адресную программу';
+    protected static ?string $label = 'вариант оплаты';
     
-    protected static ?string $pluralLabel = 'Адресные программы';
+    protected static ?string $pluralLabel = 'Варианты оплаты';
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('address_id')
-                    ->label('Адрес')
-                    ->relationship('address', 'name')
+                Forms\Components\TextInput::make('payer_company')
+                    ->label('Компания-плательщик')
                     ->required()
-                    ->searchable()
-                    ->preload(),
+                    ->maxLength(255)
+                    ->placeholder('ЦЕХ, БС, ЦФ, УС и т.д.'),
+                
+                Forms\Components\Textarea::make('description')
+                    ->label('Описание варианта')
+                    ->rows(2)
+                    ->columnSpanFull(),
                 
                 Forms\Components\TextInput::make('order')
                     ->label('Порядок')
                     ->numeric()
                     ->default(1)
                     ->minValue(1),
-                
-                Forms\Components\Toggle::make('is_active')
-                    ->label('Активно')
-                    ->default(true),
             ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('address.name')
+            ->recordTitleAttribute('payer_company')
             ->columns([
-                Tables\Columns\TextColumn::make('address.name')
-                    ->label('Адрес')
+                Tables\Columns\TextColumn::make('payer_company')
+                    ->label('Компания-плательщик')
                     ->searchable()
                     ->sortable(),
                 
-                Tables\Columns\TextColumn::make('address.address')
-                    ->label('Полный адрес')
-                    ->limit(50),
+                Tables\Columns\TextColumn::make('description')
+                    ->label('Описание')
+                    ->limit(30),
                 
                 Tables\Columns\TextColumn::make('order')
                     ->label('Порядок')
                     ->sortable(),
-                
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Активно')
-                    ->boolean(),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Добавить адресную программу'),
+                    ->label('Добавить вариант оплаты'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -78,6 +74,7 @@ class AddressProgramsRelationManager extends RelationManager
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('order', 'asc');
     }
 }

@@ -28,6 +28,13 @@ class PurposeResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
+                        Forms\Components\Select::make('project_id')
+                            ->label('Проект')
+                            ->relationship('project', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+                        
                         Forms\Components\TextInput::make('name')
                             ->label('Название назначения')
                             ->required()
@@ -37,21 +44,15 @@ class PurposeResource extends Resource
                             ->label('Описание')
                             ->rows(3)
                             ->columnSpanFull(),
-                        
-                        Forms\Components\Select::make('category')
-                            ->label('Категория')
-                            ->options([
-                                'construction' => 'Застройка',
-                                'installation' => 'Монтаж/Демонтаж',
-                                'maintenance' => 'Уход',
-                                'administrative' => 'Административные',
-                                'other' => 'Прочие',
-                            ])
-                            ->required(),
                     ])->columns(2),
                 
-                Forms\Components\Section::make('Статус')
+                Forms\Components\Section::make('Настройки')
                     ->schema([
+                        Forms\Components\Toggle::make('has_custom_payer_selection')
+                            ->label('Ручной выбор плательщика')
+                            ->helperText('Если включено, можно будет выбирать компанию при создании заявки')
+                            ->default(false),
+                        
                         Forms\Components\Toggle::make('is_active')
                             ->label('Активно')
                             ->default(true),
@@ -63,6 +64,11 @@ class PurposeResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('project.name')
+                    ->label('Проект')
+                    ->searchable()
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
@@ -70,33 +76,29 @@ class PurposeResource extends Resource
                 
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
-                    ->limit(50)
-                    ->searchable(),
+                    ->limit(50),
                 
-                Tables\Columns\BadgeColumn::make('category')
-                    ->label('Категория')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'construction' => 'Застройка',
-                        'installation' => 'Монтаж/Демонтаж',
-                        'maintenance' => 'Уход',
-                        'administrative' => 'Административные',
-                        'other' => 'Прочие',
-                    })
-                    ->colors([
-                        'warning' => 'construction',
-                        'primary' => 'installation', 
-                        'success' => 'maintenance',
-                        'gray' => 'administrative',
-                        'info' => 'other',
-                    ]),
+                Tables\Columns\IconColumn::make('has_custom_payer_selection')
+                    ->label('Ручной выбор')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-hand-raised')
+                    ->falseIcon('heroicon-o-cog')
+                    ->trueColor('success')
+                    ->falseColor('gray'),
                 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
-                    ->boolean(),
+                    ->boolean()
+                    ->trueColor('success')
+                    ->falseColor('danger'),
                 
-                Tables\Columns\TextColumn::make('payer_rules_count')
-                    ->label('Правил оплаты')
-                    ->counts('payerRules'),
+                Tables\Columns\TextColumn::make('payer_companies_count')
+                    ->label('Вариантов оплаты')
+                    ->counts('payerCompanies'),
+                
+                Tables\Columns\TextColumn::make('address_rules_count')
+                    ->label('Правил по адресам')
+                    ->counts('addressRules'),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -105,15 +107,11 @@ class PurposeResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('category')
-                    ->label('Категория')
-                    ->options([
-                        'construction' => 'Застройка',
-                        'installation' => 'Монтаж/Демонтаж', 
-                        'maintenance' => 'Уход',
-                        'administrative' => 'Административные',
-                        'other' => 'Прочие',
-                    ]),
+                Tables\Filters\SelectFilter::make('project')
+                    ->relationship('project', 'name'),
+                
+                Tables\Filters\TernaryFilter::make('has_custom_payer_selection')
+                    ->label('Ручной выбор плательщика'),
                 
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Активные'),
@@ -128,6 +126,15 @@ class PurposeResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            // Исправляем названия Relation Managers
+            \App\Filament\Resources\RelationManagers\PurposePayerCompaniesRelationManager::class,
+            \App\Filament\Resources\RelationManagers\PurposeAddressRulesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

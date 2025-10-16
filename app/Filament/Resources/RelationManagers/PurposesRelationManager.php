@@ -23,7 +23,7 @@ class PurposesRelationManager extends RelationManager
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Название')
+                    ->label('Название назначения')
                     ->required()
                     ->maxLength(255),
                 
@@ -32,16 +32,10 @@ class PurposesRelationManager extends RelationManager
                     ->rows(3)
                     ->columnSpanFull(),
                 
-                Forms\Components\Select::make('category')
-                    ->label('Категория')
-                    ->options([
-                        'construction' => 'Застройка',
-                        'installation' => 'Монтаж/Демонтаж',
-                        'maintenance' => 'Уход',
-                        'administrative' => 'Административные',
-                        'other' => 'Прочие',
-                    ])
-                    ->required(),
+                Forms\Components\Toggle::make('has_custom_payer_selection')
+                    ->label('Ручной выбор плательщика')
+                    ->helperText('Если включено, можно будет выбирать компанию при создании заявки')
+                    ->default(false),
                 
                 Forms\Components\Toggle::make('is_active')
                     ->label('Активно')
@@ -63,29 +57,48 @@ class PurposesRelationManager extends RelationManager
                     ->label('Описание')
                     ->limit(50),
                 
-                Tables\Columns\BadgeColumn::make('category')
-                    ->label('Категория')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'construction' => 'Застройка',
-                        'installation' => 'Монтаж/Демонтаж',
-                        'maintenance' => 'Уход',
-                        'administrative' => 'Административные',
-                        'other' => 'Прочие',
-                    })
-                    ->colors([
-                        'warning' => 'construction',
-                        'primary' => 'installation', 
-                        'success' => 'maintenance',
-                        'gray' => 'administrative',
-                        'info' => 'other',
-                    ]),
+                Tables\Columns\IconColumn::make('has_custom_payer_selection')
+                    ->label('Ручной выбор')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-hand-raised')
+                    ->falseIcon('heroicon-o-cog')
+                    ->trueColor('success')
+                    ->falseColor('gray'),
                 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
-                    ->boolean(),
+                    ->boolean()
+                    ->trueColor('success')
+                    ->falseColor('danger'),
             ])
             ->filters([
-                //
+                // Фильтр по ручному выбору плательщика
+                Tables\Filters\TernaryFilter::make('has_custom_payer_selection')
+                    ->label('Ручной выбор плательщика')
+                    ->placeholder('Все')
+                    ->trueLabel('С ручным выбором')
+                    ->falseLabel('Без ручного выбора'),
+                
+                // Фильтр по активности
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активные')
+                    ->placeholder('Все')
+                    ->trueLabel('Только активные')
+                    ->falseLabel('Только неактивные'),
+                
+                // Фильтр по поиску в названии
+                Tables\Filters\Filter::make('name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Поиск по названию')
+                            ->placeholder('Введите название...')
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['name'],
+                            fn ($query, $name) => $query->where('name', 'like', "%{$name}%")
+                        );
+                    })
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()

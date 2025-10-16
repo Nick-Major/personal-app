@@ -23,14 +23,17 @@ class Project extends Model
         'end_date' => 'date',
     ];
 
-    public function purposes()
-    {
-        return $this->hasMany(Purpose::class);
-    }
-
+    // === ИСПРАВЛЕННЫЕ СВЯЗИ ===
+    
+    // У нас больше нет address_programs таблицы, используем addresses
     public function addresses()
     {
         return $this->hasMany(Address::class);
+    }
+
+    public function purposes()
+    {
+        return $this->hasMany(Purpose::class);
     }
 
     public function workRequests()
@@ -38,6 +41,7 @@ class Project extends Model
         return $this->hasMany(WorkRequest::class);
     }
 
+    // Связи через purposes
     public function payerCompanies()
     {
         return $this->hasManyThrough(PurposePayerCompany::class, Purpose::class);
@@ -46,5 +50,19 @@ class Project extends Model
     public function addressRules()
     {
         return $this->hasManyThrough(PurposeAddressRule::class, Purpose::class);
+    }
+
+    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
+    
+    // Если у проекта нет назначений - используем компанию по умолчанию
+    public function getDefaultPayerCompany()
+    {
+        return $this->default_payer_company;
+    }
+
+    // Количество активных назначений
+    public function getActivePurposesCountAttribute()
+    {
+        return $this->purposes()->where('is_active', true)->count();
     }
 }

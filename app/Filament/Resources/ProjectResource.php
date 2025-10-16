@@ -98,17 +98,13 @@ class ProjectResource extends Resource
                         'cancelled' => 'Отменен',
                     }),
                 
-                Tables\Columns\TextColumn::make('address_programs_count')
+                Tables\Columns\TextColumn::make('addresses_count')
                     ->label('Адресов')
-                    ->counts('addressPrograms'),
-
+                    ->counts('addresses'),
+                
                 Tables\Columns\TextColumn::make('purposes_count')
                     ->label('Назначений')
                     ->counts('purposes'),
-                
-                // Tables\Columns\TextColumn::make('work_requests_count')
-                //     ->label('Заявок')
-                //     ->counts('workRequests'),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -141,8 +137,8 @@ class ProjectResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\AddressProgramsRelationManager::class,
-            RelationManagers\PurposesRelationManager::class,
+            \App\Filament\Resources\RelationManagers\AddressesRelationManager::class,
+            \App\Filament\Resources\RelationManagers\PurposesRelationManager::class,
         ];
     }
 
