@@ -22,6 +22,19 @@ class PurposePayerCompanyResource extends Resource
     
     protected static ?int $navigationSort = 5;
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS
+    protected static ?string $modelLabel = 'вариант оплаты';
+    protected static ?string $pluralModelLabel = 'Варианты оплаты';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Варианты оплаты',
+            'create' => 'Создать вариант оплаты',
+            'edit' => 'Редактировать вариант оплаты',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -109,15 +122,22 @@ class PurposePayerCompanyResource extends Resource
                 Tables\Filters\SelectFilter::make('purpose')
                     ->relationship('purpose', 'name'),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
-            ]);
+            ])
+            // ДОБАВЛЯЕМ СОРТИРОВКУ ПО УМОЛЧАНИЮ
+            ->defaultSort('order', 'asc');
     }
 
     public static function getPages(): array

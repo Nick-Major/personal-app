@@ -22,6 +22,19 @@ class PurposeAddressRuleResource extends Resource
     
     protected static ?int $navigationSort = 6;
 
+     // ДОБАВЛЯЕМ РУССКИЕ LABELS
+    protected static ?string $modelLabel = 'правило по адресу';
+    protected static ?string $pluralModelLabel = 'Правила по адресам';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Правила по адресам',
+            'create' => 'Создать правило',
+            'edit' => 'Редактировать правило',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -144,20 +157,31 @@ class PurposeAddressRuleResource extends Resource
                     ->label('Только правила по адресам')
                     ->query(fn ($query) => $query->whereNotNull('address_id')),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
                 Tables\Actions\Action::make('duplicate')
                     ->label('Дублировать')
                     ->icon('heroicon-o-document-duplicate')
                     ->action(function (PurposeAddressRule $record) {
                         $newRecord = $record->replicate();
                         $newRecord->save();
+                        
+                        // Можно добавить уведомление о успешном дублировании
+                        \Filament\Notifications\Notification::make()
+                            ->title('Правило продублировано')
+                            ->success()
+                            ->send();
                     }),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ])
             ->defaultSort('priority', 'asc');

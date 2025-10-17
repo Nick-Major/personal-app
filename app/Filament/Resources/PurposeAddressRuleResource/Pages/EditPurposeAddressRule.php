@@ -10,10 +10,21 @@ class EditPurposeAddressRule extends EditRecord
 {
     protected static string $resource = PurposeAddressRuleResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Правило сохранено';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Удалить правило'),
         ];
     }
 }

@@ -10,10 +10,21 @@ class EditAddress extends EditRecord
 {
     protected static string $resource = AddressResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Адрес сохранен';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Удалить адрес'),
         ];
     }
 }

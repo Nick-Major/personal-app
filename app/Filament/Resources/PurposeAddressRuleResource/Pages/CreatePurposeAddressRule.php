@@ -9,4 +9,14 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePurposeAddressRule extends CreateRecord
 {
     protected static string $resource = PurposeAddressRuleResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Правило создано';
+    }
 }

@@ -10,10 +10,21 @@ class EditPurposePayerCompany extends EditRecord
 {
     protected static string $resource = PurposePayerCompanyResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Вариант оплаты сохранен';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Удалить вариант оплаты'),
         ];
     }
 }

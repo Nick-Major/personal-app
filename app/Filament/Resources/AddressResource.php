@@ -22,6 +22,19 @@ class AddressResource extends Resource
     
     protected static ?int $navigationSort = 3;
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS
+    protected static ?string $modelLabel = 'адрес';
+    protected static ?string $pluralModelLabel = 'Адреса';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Адреса',
+            'create' => 'Создать адрес',
+            'edit' => 'Редактировать адрес',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -111,14 +124,20 @@ class AddressResource extends Resource
                     ->preload()
                     ->label('Проект'),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\ViewAction::make()
+                    ->label('Просмотреть'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ]);
     }
