@@ -10,10 +10,21 @@ class EditProject extends EditRecord
 {
     protected static string $resource = ProjectResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Проект сохранен';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Удалить проект'),
         ];
     }
 }

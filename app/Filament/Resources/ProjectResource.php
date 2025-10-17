@@ -22,6 +22,18 @@ class ProjectResource extends Resource
     
     protected static ?int $navigationSort = 1;
 
+    protected static ?string $modelLabel = 'проект';
+    protected static ?string $pluralModelLabel = 'Проекты';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Проекты',
+            'create' => 'Создать проект',
+            'edit' => 'Редактировать проект',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -123,13 +135,17 @@ class ProjectResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\ViewAction::make()
+                    ->label('Просмотреть'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ]);
     }
@@ -171,5 +187,18 @@ class ProjectResource extends Resource
     public static function canDelete($record): bool
     {
         return auth()->user()->hasPermissionTo('edit_database');
+    }
+
+    // ДОБАВЬ ЭТОТ МЕТОД ДЛЯ РУССКИХ НАЗВАНИЙ ДЕЙСТВИЙ
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
+
+    // ДОБАВЬ ЭТОТ МЕТОД ДЛЯ ПЕРЕВОДА CREATE ACTION
+    public static function getCreateAction(): \Filament\Actions\Action
+    {
+        return parent::getCreateAction()
+            ->label('Новый проект');
     }
 }

@@ -22,6 +22,19 @@ class PurposeResource extends Resource
     
     protected static ?int $navigationSort = 2;
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS
+    protected static ?string $modelLabel = 'назначение';
+    protected static ?string $pluralModelLabel = 'Назначения';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Назначения',
+            'create' => 'Создать назначение',
+            'edit' => 'Редактировать назначение',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -173,13 +186,22 @@ class PurposeResource extends Resource
                     ->label('Активные'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\ViewAction::make()
+                    ->label('Просмотреть'),
+                Tables\Actions\Action::make('managePayerCompanies')
+                    ->label('Варианты оплаты')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn ($record) => \App\Filament\Resources\PurposeResource::getUrl('edit', ['record' => $record])),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ]);
     }
