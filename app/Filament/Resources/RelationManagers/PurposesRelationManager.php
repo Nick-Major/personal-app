@@ -70,7 +70,9 @@ class PurposesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap()
+                    ->weight('medium'),
                 
                 // НОВЫЕ КОЛОНКИ
                 Tables\Columns\TextColumn::make('payer_selection_type')

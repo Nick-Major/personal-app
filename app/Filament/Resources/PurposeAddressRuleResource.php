@@ -53,7 +53,6 @@ class PurposeAddressRuleResource extends Resource
                         
                         Forms\Components\Select::make('address_id')
                             ->label('Адрес')
-                            ->relationship('address', 'name')
                             ->searchable()
                             ->preload()
                             ->options(function ($get) {
@@ -61,7 +60,11 @@ class PurposeAddressRuleResource extends Resource
                                 if (!$projectId) {
                                     return \App\Models\Address::all()->pluck('name', 'id');
                                 }
-                                return \App\Models\Address::where('project_id', $projectId)->pluck('name', 'id');
+                                
+                                // ИСПРАВЛЕНИЕ: через связь many-to-many
+                                return \App\Models\Address::whereHas('projects', function ($query) use ($projectId) {
+                                    $query->where('projects.id', $projectId);
+                                })->pluck('name', 'id');
                             })
                             ->helperText('Оставьте пустым для общего правила')
                             ->nullable(),
@@ -129,6 +132,8 @@ class PurposeAddressRuleResource extends Resource
                 
                 Tables\Filters\SelectFilter::make('address')
                     ->relationship('address', 'name')
+                    ->searchable()
+                    ->preload()
                     ->placeholder('Все адреса'),
                 
                 Tables\Filters\Filter::make('general_rules')

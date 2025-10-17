@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use Illuminate\Validation\Rule;
 
 class PurposeTemplateResource extends Resource
 {
@@ -38,38 +39,18 @@ class PurposeTemplateResource extends Resource
                             ->label('Название назначения')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('Например: Монтаж, Демонтаж, Уход за растениями'),
-                        
-                        Forms\Components\Textarea::make('description')
-                            ->label('Описание')
-                            ->rows(3)
-                            ->columnSpanFull()
-                            ->placeholder('Подробное описание назначения...'),
-                    ]),
-                
-                Forms\Components\Section::make('Настройки оплаты по умолчанию')
-                    ->schema([
-                        Forms\Components\Select::make('default_payer_selection_type')
-                            ->label('Тип выбора плательщика по умолчанию')
-                            ->options([
-                                'strict' => 'Строгая привязка',
-                                'optional' => 'Опциональный выбор', 
-                                'address_based' => 'Зависит от адреса',
-                            ])
-                            ->default('strict')
-                            ->required()
-                            ->helperText('Будет использоваться при создании назначения из шаблона'),
-                        
-                        Forms\Components\TextInput::make('default_payer_company')
-                            ->label('Компания-плательщик по умолчанию')
-                            ->maxLength(255)
-                            ->placeholder('ЦЕХ, БС, ЦФ, УС и т.д.'),
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Например: Монтаж, Демонтаж, Уход за растениями')
+                            ->validationMessages([
+                                'unique' => 'Шаблон с таким названием уже существует',
+                            ]),
                         
                         Forms\Components\Toggle::make('is_active')
                             ->label('Активный шаблон')
                             ->default(true)
                             ->helperText('Неактивные шаблоны не будут показываться при выборе'),
                     ]),
+                // УБИРАЕМ настройки оплаты - они будут в Purpose
             ]);
     }
 
@@ -80,36 +61,16 @@ class PurposeTemplateResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('description')
-                    ->label('Описание')
-                    ->limit(50),
-                
-                Tables\Columns\TextColumn::make('default_payer_selection_type')
-                    ->label('Тип оплаты')
-                    ->badge()
-                    ->formatStateUsing(fn ($state) => match($state) {
-                        'strict' => 'Строгая',
-                        'optional' => 'Выбор', 
-                        'address_based' => 'По адресу',
-                        default => $state,
-                    })
-                    ->color(fn ($state) => match($state) {
-                        'strict' => 'success',
-                        'optional' => 'warning',
-                        'address_based' => 'info',
-                        default => 'gray',
-                    }),
-                
-                Tables\Columns\TextColumn::make('default_payer_company')
-                    ->label('Плательщик по умолчанию'),
+                    ->sortable()
+                    ->wrap() // ПЕРЕНОС ТЕКСТА
+                    ->weight('medium'), // ЖИРНЫЙ ШРИФТ
                 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
                     ->boolean()
                     ->trueColor('success')
-                    ->falseColor('danger'),
+                    ->falseColor('danger')
+                    ->sortable(),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -118,23 +79,15 @@ class PurposeTemplateResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('default_payer_selection_type')
-                    ->label('Тип оплаты')
-                    ->options([
-                        'strict' => 'Строгая привязка',
-                        'optional' => 'Опциональный выбор',
-                        'address_based' => 'По адресу',
-                    ]),
-                
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Активные шаблоны'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
                 
-                // ДЕЙСТВИЕ: Создать назначение из шаблона
                 Tables\Actions\Action::make('createPurpose')
-                    ->label('Создать в проекте')
+                    ->label('Добавить в проект')
                     ->icon('heroicon-o-plus')
                     ->form([
                         Forms\Components\Select::make('project_id')
@@ -147,6 +100,20 @@ class PurposeTemplateResource extends Resource
                     ->action(function (PurposeTemplate $record, array $data) {
                         $project = Project::find($data['project_id']);
                         
+                        // Проверяем дублирование
+                        $existingPurpose = \App\Models\Purpose::where('project_id', $project->id)
+                            ->where('name', $record->name)
+                            ->first();
+                            
+                        if ($existingPurpose) {
+                            Notification::make()
+                                ->title('Ошибка')
+                                ->body("Назначение '{$record->name}' уже существует в проекте '{$project->name}'")
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        
                         // Создаем назначение из шаблона
                         $purpose = $record->createPurposeForProject($project);
                         
@@ -157,20 +124,22 @@ class PurposeTemplateResource extends Resource
                             ->send();
                     }),
                     
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
+            ])
+            ->emptyStateHeading('Нет шаблонов назначений')
+            ->emptyStateDescription('Создайте первый шаблон назначения.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Создать шаблон')
+                    ->icon('heroicon-o-plus'),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // Пока без связей
-        ];
     }
 
     public static function getPages(): array
@@ -179,6 +148,16 @@ class PurposeTemplateResource extends Resource
             'index' => Pages\ListPurposeTemplates::route('/'),
             'create' => Pages\CreatePurposeTemplate::route('/create'),
             'edit' => Pages\EditPurposeTemplate::route('/{record}/edit'),
+        ];
+    }
+
+    // Русские названия для страниц
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Шаблоны назначений',
+            'create' => 'Создать шаблон',
+            'edit' => 'Редактировать шаблон',
         ];
     }
 }

@@ -11,25 +11,22 @@ class PurposeTemplate extends Model
 
     protected $fillable = [
         'name',
-        'description', 
-        'is_active',
-        'default_payer_selection_type',
-        'default_payer_company'
+        'is_active'
+        // Убираем description и настройки оплаты
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
-    // Метод для создания назначения из шаблона
     public function createPurposeForProject(Project $project): Purpose
     {
         return Purpose::create([
             'project_id' => $project->id,
             'name' => $this->name,
-            'description' => $this->description,
-            'payer_selection_type' => $this->default_payer_selection_type,
-            'default_payer_company' => $this->default_payer_company,
+            'description' => null, // Описание будет заполняться в проекте
+            'payer_selection_type' => 'strict', // По умолчанию строгая
+            'default_payer_company' => null, // Настраивается в проекте
             'has_custom_payer_selection' => false,
             'is_active' => true,
         ]);
