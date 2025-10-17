@@ -46,8 +46,34 @@ class PurposeResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(2),
                 
-                Forms\Components\Section::make('Настройки')
+                Forms\Components\Section::make('Настройки оплаты')
                     ->schema([
+                        // НОВОЕ ПОЛЕ: Тип выбора плательщика
+                        Forms\Components\Select::make('payer_selection_type')
+                            ->label('Тип выбора плательщика')
+                            ->options([
+                                'strict' => 'Строгая привязка',
+                                'optional' => 'Опциональный выбор', 
+                                'address_based' => 'Зависит от адреса',
+                            ])
+                            ->default('strict')
+                            ->required()
+                            ->live()
+                            ->helperText('Определяет как выбирается компания-плательщик'),
+                        
+                        Forms\Components\TextInput::make('default_payer_company')
+                            ->label('Компания-плательщик по умолчанию')
+                            ->maxLength(255)
+                            ->placeholder('ЦЕХ, БС, ЦФ, УС и т.д.')
+                            ->hidden(fn (Forms\Get $get) => $get('payer_selection_type') === 'optional')
+                            ->helperText(function (Forms\Get $get) {
+                                return match($get('payer_selection_type')) {
+                                    'strict' => 'Все заявки будут использовать эту компанию',
+                                    'address_based' => 'Используется как запасной вариант если нет правил для адреса',
+                                    default => 'Используется для строгой привязки'
+                                };
+                            }),
+                        
                         Forms\Components\Toggle::make('has_custom_payer_selection')
                             ->label('Ручной выбор плательщика')
                             ->helperText('Если включено, можно будет выбирать компанию при создании заявки')
@@ -73,6 +99,27 @@ class PurposeResource extends Resource
                     ->label('Название')
                     ->searchable()
                     ->sortable(),
+
+                // НОВАЯ КОЛОНКА: Тип выбора плательщика
+                Tables\Columns\TextColumn::make('payer_selection_type')
+                    ->label('Тип оплаты')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match($state?->value ?? $state) {
+                        'strict' => 'Строгая',
+                        'optional' => 'Выбор', 
+                        'address_based' => 'По адресу',
+                        default => $state?->value ?? $state,
+                    })
+                    ->color(fn ($state) => match($state?->value ?? $state) {
+                        'strict' => 'success',
+                        'optional' => 'warning',
+                        'address_based' => 'info',
+                        default => 'gray',
+                    }),
+                
+                Tables\Columns\TextColumn::make('default_payer_company')
+                    ->label('Плательщик')
+                    ->limit(20),
                 
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
@@ -109,6 +156,15 @@ class PurposeResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('project')
                     ->relationship('project', 'name'),
+
+                // НОВЫЙ ФИЛЬТР: по типу выбора плательщика
+                Tables\Filters\SelectFilter::make('payer_selection_type')
+                    ->label('Тип оплаты')
+                    ->options([
+                        'strict' => 'Строгая привязка',
+                        'optional' => 'Опциональный выбор',
+                        'address_based' => 'По адресу',
+                    ]),
                 
                 Tables\Filters\TernaryFilter::make('has_custom_payer_selection')
                     ->label('Ручной выбор плательщика'),
@@ -131,7 +187,6 @@ class PurposeResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Исправляем названия Relation Managers
             \App\Filament\Resources\RelationManagers\PurposePayerCompaniesRelationManager::class,
             \App\Filament\Resources\RelationManagers\PurposeAddressRulesRelationManager::class,
         ];
@@ -144,5 +199,26 @@ class PurposeResource extends Resource
             'create' => Pages\CreatePurpose::route('/create'),
             'edit' => Pages\EditPurpose::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database') || 
+            auth()->user()->hasPermissionTo('view_purposes');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
     }
 }

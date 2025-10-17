@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RelationManagers;
 
+use App\Enums\PayerSelectionType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -32,6 +33,24 @@ class PurposesRelationManager extends RelationManager
                     ->rows(3)
                     ->columnSpanFull(),
                 
+                // НОВЫЕ ПОЛЯ
+                Forms\Components\Select::make('payer_selection_type')
+                    ->label('Тип выбора плательщика')
+                    ->options([
+                        'strict' => 'Строгая привязка',
+                        'optional' => 'Опциональный выбор', 
+                        'address_based' => 'Зависит от адреса',
+                    ])
+                    ->default('strict')
+                    ->required()
+                    ->live(),
+                
+                Forms\Components\TextInput::make('default_payer_company')
+                    ->label('Компания-плательщик по умолчанию')
+                    ->maxLength(255)
+                    ->placeholder('ЦЕХ, БС, ЦФ, УС и т.д.')
+                    ->hidden(fn (Forms\Get $get) => $get('payer_selection_type') === 'optional'),
+                
                 Forms\Components\Toggle::make('has_custom_payer_selection')
                     ->label('Ручной выбор плательщика')
                     ->helperText('Если включено, можно будет выбирать компанию при создании заявки')
@@ -53,6 +72,27 @@ class PurposesRelationManager extends RelationManager
                     ->searchable()
                     ->sortable(),
                 
+                // НОВЫЕ КОЛОНКИ
+                Tables\Columns\TextColumn::make('payer_selection_type')
+                    ->label('Тип оплаты')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match($state?->value ?? $state) {
+                        'strict' => 'Строгая',
+                        'optional' => 'Выбор', 
+                        'address_based' => 'По адресу',
+                        default => $state?->value ?? $state,
+                    })
+                    ->color(fn ($state) => match($state?->value ?? $state) {
+                        'strict' => 'success',
+                        'optional' => 'warning',
+                        'address_based' => 'info',
+                        default => 'gray',
+                    }),
+                
+                Tables\Columns\TextColumn::make('default_payer_company')
+                    ->label('Плательщик')
+                    ->limit(20),
+                
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
                     ->limit(50),
@@ -70,35 +110,30 @@ class PurposesRelationManager extends RelationManager
                     ->boolean()
                     ->trueColor('success')
                     ->falseColor('danger'),
+                
+                // СТАТИСТИКА
+                Tables\Columns\TextColumn::make('payer_companies_count')
+                    ->label('Вариантов оплаты')
+                    ->counts('payerCompanies'),
+                
+                Tables\Columns\TextColumn::make('address_rules_count')
+                    ->label('Правил по адресам')
+                    ->counts('addressRules'),
             ])
             ->filters([
-                // Фильтр по ручному выбору плательщика
+                Tables\Filters\SelectFilter::make('payer_selection_type')
+                    ->label('Тип оплаты')
+                    ->options([
+                        'strict' => 'Строгая привязка',
+                        'optional' => 'Опциональный выбор',
+                        'address_based' => 'По адресу',
+                    ]),
+                
                 Tables\Filters\TernaryFilter::make('has_custom_payer_selection')
-                    ->label('Ручной выбор плательщика')
-                    ->placeholder('Все')
-                    ->trueLabel('С ручным выбором')
-                    ->falseLabel('Без ручного выбора'),
+                    ->label('Ручной выбор плательщика'),
                 
-                // Фильтр по активности
                 Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Активные')
-                    ->placeholder('Все')
-                    ->trueLabel('Только активные')
-                    ->falseLabel('Только неактивные'),
-                
-                // Фильтр по поиску в названии
-                Tables\Filters\Filter::make('name')
-                    ->form([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Поиск по названию')
-                            ->placeholder('Введите название...')
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query->when(
-                            $data['name'],
-                            fn ($query, $name) => $query->where('name', 'like', "%{$name}%")
-                        );
-                    })
+                    ->label('Активные'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -106,6 +141,11 @@ class PurposesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('managePayerCompanies')
+                    ->label('Варианты оплаты')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn ($record) => \App\Filament\Resources\PurposeResource::getUrl('edit', ['record' => $record])),
+                
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([

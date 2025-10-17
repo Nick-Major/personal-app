@@ -28,7 +28,7 @@ class Project extends Model
     // У нас больше нет address_programs таблицы, используем addresses
     public function addresses()
     {
-        return $this->hasMany(Address::class);
+        return $this->belongsToMany(Address::class);
     }
 
     public function purposes()

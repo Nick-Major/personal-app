@@ -28,18 +28,20 @@ class AddressResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Информация об адресе')
                     ->schema([
-                        Forms\Components\Select::make('project_id')
-                            ->relationship('project', 'name')
-                            ->required()
+                        // ЗАМЕНЯЕМ: project_id на projects (many-to-many)
+                        Forms\Components\Select::make('projects')
+                            ->relationship('projects', 'name')
+                            ->multiple()
+                            ->preload()
                             ->searchable()
-                            ->preload(),
+                            ->label('Проекты'),
 
                         Forms\Components\TextInput::make('name')
                             ->label('Название места')
                             ->required()
                             ->maxLength(255),
                         
-                        Forms\Components\Textarea::make('full_address') // ИСПРАВЛЕНО: было address
+                        Forms\Components\Textarea::make('full_address')
                             ->label('Полный адрес')
                             ->required()
                             ->rows(2)
@@ -57,9 +59,12 @@ class AddressResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('project.name')
-                    ->label('Проект')
-                    ->sortable()
+                // ЗАМЕНЯЕМ: project.name на список проектов
+                Tables\Columns\TextColumn::make('projects.name')
+                    ->label('Проекты')
+                    ->badge()
+                    ->separator(',')
+                    ->limitList(2)
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('name')
@@ -67,7 +72,7 @@ class AddressResource extends Resource
                     ->searchable()
                     ->sortable(),
                 
-                Tables\Columns\TextColumn::make('full_address') // ИСПРАВЛЕНО: было address
+                Tables\Columns\TextColumn::make('full_address')
                     ->label('Адрес')
                     ->searchable()
                     ->limit(50),
@@ -77,13 +82,20 @@ class AddressResource extends Resource
                     ->limit(30)
                     ->searchable(),
                 
-                Tables\Columns\TextColumn::make('addressRules_count') // ИСПРАВЛЕНО: было address_programs_count
+                // ИСПРАВЛЯЕМ: название счетчика
+                Tables\Columns\TextColumn::make('address_rules_count')
                     ->label('Правил оплаты')
                     ->counts('addressRules'),
                 
-                Tables\Columns\TextColumn::make('workRequests_count') // ДОБАВЛЕНО: вместо payer_rules_count
+                Tables\Columns\TextColumn::make('work_requests_count')
                     ->label('Заявок')
                     ->counts('workRequests'),
+
+                // ДОБАВЛЯЕМ: количество проектов
+                Tables\Columns\TextColumn::make('projects_count')
+                    ->label('Проектов')
+                    ->counts('projects')
+                    ->sortable(),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -92,10 +104,12 @@ class AddressResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('project')
-                    ->relationship('project', 'name')
+                // ОБНОВЛЯЕМ: фильтр для many-to-many
+                Tables\Filters\SelectFilter::make('projects')
+                    ->relationship('projects', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->label('Проект'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -116,5 +130,26 @@ class AddressResource extends Resource
             'create' => Pages\CreateAddress::route('/create'),
             'edit' => Pages\EditAddress::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database') || 
+            auth()->user()->hasPermissionTo('view_addresses');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()->hasPermissionTo('edit_database');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -10,6 +11,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
+use Filament\Notifications\Notification;
 
 class UserResource extends Resource
 {
@@ -90,7 +93,54 @@ class UserResource extends Resource
                             ->label('Роли в системе')
                             ->relationship('roles', 'name')
                             ->multiple()
-                            ->preload(),
+                            ->preload()
+                            ->reactive()
+                            ->afterStateUpdated(function ($set, $state) {
+                                // Сбрасываем права при смене роли
+                                $set('permissions', []);
+                            }),
+                            
+                        Forms\Components\Select::make('permissions')
+                            ->label('Специальные права')
+                            ->relationship('permissions', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->options(function ($get) {
+                                $roles = $get('roles') ?? [];
+                                
+                                // Показываем право редактирования БД только Инициаторам и Диспетчерам
+                                $allowedRoles = ['initiator', 'dispatcher'];
+                                $hasAllowedRole = !empty(array_intersect($allowedRoles, $roles));
+                                
+                                if ($hasAllowedRole) {
+                                    return Permission::where('name', 'edit_database')
+                                        ->orWhere('name', 'like', 'view_%')
+                                        ->pluck('name', 'name') // ИСПРАВЛЕНО: убираем description
+                                        ->map(function ($name) {
+                                            return match($name) {
+                                                'edit_database' => '📊 Редактирование базы данных',
+                                                'view_projects' => '👀 Просмотр проектов',
+                                                'view_purposes' => '👀 Просмотр назначений',
+                                                'view_addresses' => '👀 Просмотр адресов',
+                                                'view_work_requests' => '👀 Просмотр заявок',
+                                                default => $name
+                                            };
+                                        });
+                                }
+                                
+                                return [];
+                            })
+                            ->helperText(function ($get) {
+                                $roles = $get('roles') ?? [];
+                                $allowedRoles = ['initiator', 'dispatcher'];
+                                $hasAllowedRole = !empty(array_intersect($allowedRoles, $roles));
+                                
+                                if ($hasAllowedRole) {
+                                    return '✅ Можете дать право на редактирование БД этому пользователю';
+                                }
+                                return '⚠️ Права редактирования БД доступны только Инициаторам и Диспетчерам';
+                            }),
                     ]),
                     
                 Forms\Components\Section::make('Дополнительно')
@@ -144,6 +194,36 @@ class UserResource extends Resource
                     ->badge()
                     ->separator(', '),
                     
+                Tables\Columns\TextColumn::make('roles.name')
+                    ->label('Роли')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'admin' => '👑 Админ',
+                        'initiator' => '📋 Инициатор',
+                        'dispatcher' => '📞 Диспетчер',
+                        'executor' => '👷 Исполнитель',
+                        'contractor' => '🏢 Подрядчик',
+                        default => $state
+                    })
+                    ->colors([
+                        'danger' => 'admin',
+                        'success' => 'initiator',
+                        'warning' => 'dispatcher',
+                        'info' => 'executor',
+                        'gray' => 'contractor',
+                    ]),
+                    
+                Tables\Columns\IconColumn::make('can_edit_database')
+                    ->label('Редакт. БД')
+                    ->getStateUsing(fn ($record) => $record->hasPermissionTo('edit_database'))
+                    ->boolean()
+                    ->trueIcon('heroicon-o-cog-6-tooth')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->tooltip(fn ($record) => $record->hasPermissionTo('edit_database') 
+                        ? 'Может редактировать БД' 
+                        : 'Не может редактировать БД'),
+                    
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
                     ->dateTime()
@@ -163,9 +243,57 @@ class UserResource extends Resource
                     ->label('Специальность')
                     ->relationship('specialties', 'name')
                     ->multiple(),
+                    
+                Tables\Filters\SelectFilter::make('roles')
+                    ->label('Роль')
+                    ->relationship('roles', 'name')
+                    ->multiple()
+                    ->preload(),
+                    
+                Tables\Filters\Filter::make('can_edit_database')
+                    ->label('Может редактировать БД')
+                    ->query(fn ($query) => $query->whereHas('permissions', function ($q) {
+                        $q->where('name', 'edit_database');
+                    })),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                
+                Tables\Actions\Action::make('toggle_database_edit')
+                    ->label('Право редакт. БД')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->action(function (User $record) {
+                        if ($record->hasPermissionTo('edit_database')) {
+                            $record->revokePermissionTo('edit_database');
+                            Notification::make()
+                                ->title('Право отозвано')
+                                ->body("{$record->name} больше не может редактировать БД")
+                                ->success()
+                                ->send();
+                        } else {
+                            // Проверяем что пользователь Инициатор или Диспетчер
+                            if ($record->hasAnyRole(['initiator', 'dispatcher'])) {
+                                $record->givePermissionTo('edit_database');
+                                Notification::make()
+                                    ->title('Право выдано')
+                                    ->body("{$record->name} теперь может редактировать БД")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Ошибка')
+                                    ->body('Право редактирования БД можно давать только Инициаторам и Диспетчерам')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }
+                    })
+                    ->visible(fn () => auth()->user()->hasRole('admin'))
+                    ->color(fn (User $record) => $record->hasPermissionTo('edit_database') ? 'danger' : 'success')
+                    ->tooltip(fn (User $record) => $record->hasPermissionTo('edit_database') 
+                        ? 'Отозвать право редактирования БД' 
+                        : 'Дать право редактирования БД'),
+                        
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -178,7 +306,12 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Можно добавить связи для отображения смен, заявок и т.д.
+            RelationManagers\InitiatedWorkRequestsRelationManager::class,
+            RelationManagers\BrigadierWorkRequestsRelationManager::class,
+            RelationManagers\DispatcherWorkRequestsRelationManager::class,
+            RelationManagers\ShiftsRelationManager::class,
+            RelationManagers\BrigadierAssignmentsRelationManager::class,
+            RelationManagers\InitiatorGrantsRelationManager::class,
         ];
     }
 
@@ -189,5 +322,10 @@ class UserResource extends Resource
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
     }
 }
