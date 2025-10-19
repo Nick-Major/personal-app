@@ -19,6 +19,23 @@ class ContractorResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Управление персоналом';
+    protected static ?string $navigationLabel = 'Подрядчики';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $modelLabel = 'подрядчик';
+    protected static ?string $pluralModelLabel = 'Подрядчики';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Подрядчики',
+            'create' => 'Создать подрядчика',
+            'edit' => 'Редактировать подрядчика',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -116,17 +133,25 @@ class ContractorResource extends Resource
                     ->label('Обновлен'),
             ])
             ->filters([
-                Tables\Filters\Filter::make('is_active')
-                    ->label('Только активные')
-                    ->query(fn (Builder $query) => $query->where('is_active', true)),
+                // ОБНОВЛЯЕМ ФИЛЬТР С РУССКИМ НАЗВАНИЕМ
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активные')
+                    ->placeholder('Все подрядчики')
+                    ->trueLabel('Только активные')
+                    ->falseLabel('Только неактивные'),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ])
             ->defaultSort('name', 'asc');

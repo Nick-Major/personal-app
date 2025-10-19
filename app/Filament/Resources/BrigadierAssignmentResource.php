@@ -16,6 +16,23 @@ class BrigadierAssignmentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
 
+     // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Управление персоналом';
+    protected static ?string $navigationLabel = 'Назначения бригадиров';
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $modelLabel = 'назначение бригадира';
+    protected static ?string $pluralModelLabel = 'Назначения бригадиров';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Назначения бригадиров',
+            'create' => 'Создать назначение',
+            'edit' => 'Редактировать назначение',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -145,12 +162,16 @@ class BrigadierAssignmentResource extends Resource
                     ->preload(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ]);
     }

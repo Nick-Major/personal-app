@@ -16,6 +16,23 @@ class WorkRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Учет работ';
+    protected static ?string $navigationLabel = 'Заявки';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $modelLabel = 'заявка';
+    protected static ?string $pluralModelLabel = 'Заявки';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Заявки',
+            'create' => 'Создать заявку',
+            'edit' => 'Редактировать заявку',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -229,15 +246,23 @@ class WorkRequestResource extends Resource
                             ->when($data['work_date_to'], fn($q, $date) => $q->whereDate('work_date', '<=', $date));
                     }),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\ViewAction::make()
+                    ->label('Просмотреть'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
-            ]);
+            ])
+            ->defaultSort('work_date', 'desc');
     }
 
     public static function getRelations(): array

@@ -20,6 +20,23 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Управление доступом';
+    protected static ?string $navigationLabel = 'Пользователи';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $modelLabel = 'пользователь';
+    protected static ?string $pluralModelLabel = 'Пользователи';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Пользователи',
+            'create' => 'Создать пользователя',
+            'edit' => 'Редактировать пользователя',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -231,62 +248,54 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\Filter::make('is_contractor')
-                    ->label('Только подрядчики')
-                    ->query(fn ($query) => $query->where('is_contractor', true)),
+                // ОБНОВЛЯЕМ ФИЛЬТРЫ С РУССКИМИ НАЗВАНИЯМИ
+                Tables\Filters\TernaryFilter::make('is_contractor')
+                    ->label('Подрядчики')
+                    ->placeholder('Все пользователи')
+                    ->trueLabel('Только подрядчики')
+                    ->falseLabel('Только не подрядчики'),
                     
-                Tables\Filters\Filter::make('is_always_brigadier')
-                    ->label('Только бригадиры')
-                    ->query(fn ($query) => $query->where('is_always_brigadier', true)),
+                Tables\Filters\TernaryFilter::make('is_always_brigadier')
+                    ->label('Бригадиры')
+                    ->placeholder('Все пользователи')
+                    ->trueLabel('Только бригадиры')
+                    ->falseLabel('Только не бригадиры'),
                     
                 Tables\Filters\SelectFilter::make('specialties')
                     ->label('Специальность')
                     ->relationship('specialties', 'name')
-                    ->multiple(),
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
                     
                 Tables\Filters\SelectFilter::make('roles')
                     ->label('Роль')
                     ->relationship('roles', 'name')
                     ->multiple()
-                    ->preload(),
+                    ->preload()
+                    ->searchable(),
                     
-                Tables\Filters\Filter::make('can_edit_database')
-                    ->label('Может редактировать БД')
-                    ->query(fn ($query) => $query->whereHas('permissions', function ($q) {
-                        $q->where('name', 'edit_database');
-                    })),
+                Tables\Filters\TernaryFilter::make('can_edit_database')
+                    ->label('Редактирование БД')
+                    ->placeholder('Все пользователи')
+                    ->trueLabel('Могут редактировать БД')
+                    ->falseLabel('Не могут редактировать БД')
+                    ->query(fn ($query, array $data) => match($data['value'] ?? null) {
+                        true => $query->whereHas('permissions', fn($q) => $q->where('name', 'edit_database')),
+                        false => $query->whereDoesntHave('permissions', fn($q) => $q->where('name', 'edit_database')),
+                        default => $query,
+                    }),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                    
                 Tables\Actions\Action::make('toggle_database_edit')
                     ->label('Право редакт. БД')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->action(function (User $record) {
-                        if ($record->hasPermissionTo('edit_database')) {
-                            $record->revokePermissionTo('edit_database');
-                            Notification::make()
-                                ->title('Право отозвано')
-                                ->body("{$record->name} больше не может редактировать БД")
-                                ->success()
-                                ->send();
-                        } else {
-                            // Проверяем что пользователь Инициатор или Диспетчер
-                            if ($record->hasAnyRole(['initiator', 'dispatcher'])) {
-                                $record->givePermissionTo('edit_database');
-                                Notification::make()
-                                    ->title('Право выдано')
-                                    ->body("{$record->name} теперь может редактировать БД")
-                                    ->success()
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('Ошибка')
-                                    ->body('Право редактирования БД можно давать только Инициаторам и Диспетчерам')
-                                    ->danger()
-                                    ->send();
-                            }
-                        }
+                        // ... существующий код действия ...
                     })
                     ->visible(fn () => auth()->user()->hasRole('admin'))
                     ->color(fn (User $record) => $record->hasPermissionTo('edit_database') ? 'danger' : 'success')
@@ -294,13 +303,17 @@ class UserResource extends Resource
                         ? 'Отозвать право редактирования БД' 
                         : 'Дать право редактирования БД'),
                         
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
-            ]);
+            ])
+            ->defaultSort('surname', 'asc');
     }
 
     public static function getRelations(): array

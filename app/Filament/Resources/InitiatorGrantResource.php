@@ -19,6 +19,23 @@ class InitiatorGrantResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Управление персоналом';
+    protected static ?string $navigationLabel = 'Права инициаторов';
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $modelLabel = 'право инициатора';
+    protected static ?string $pluralModelLabel = 'Права инициаторов';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Права инициаторов',
+            'create' => 'Создать право',
+            'edit' => 'Редактировать право',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -97,13 +114,18 @@ class InitiatorGrantResource extends Resource
                     ->label('Обновлено'),
             ])
             ->filters([
-                Tables\Filters\Filter::make('is_active')
-                    ->label('Только активные')
-                    ->query(fn (Builder $query) => $query->where('is_active', true)),
+                // ОБНОВЛЯЕМ ФИЛЬТРЫ С РУССКИМИ НАЗВАНИЯМИ
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активные')
+                    ->placeholder('Все права')
+                    ->trueLabel('Только активные')
+                    ->falseLabel('Только неактивные'),
                     
-                Tables\Filters\Filter::make('is_temporary')
-                    ->label('Только временные')
-                    ->query(fn (Builder $query) => $query->where('is_temporary', true)),
+                Tables\Filters\TernaryFilter::make('is_temporary')
+                    ->label('Временные права')
+                    ->placeholder('Все права')
+                    ->trueLabel('Только временные')
+                    ->falseLabel('Только постоянные'),
                     
                 Tables\Filters\SelectFilter::make('initiator_id')
                     ->relationship('initiator', 'name')
@@ -117,14 +139,20 @@ class InitiatorGrantResource extends Resource
                     ->searchable()
                     ->preload(),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\ViewAction::make()
+                    ->label('Просмотреть'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

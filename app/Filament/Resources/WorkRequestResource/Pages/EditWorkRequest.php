@@ -10,10 +10,21 @@ class EditWorkRequest extends EditRecord
 {
     protected static string $resource = WorkRequestResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Заявка сохранена';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Удалить заявку'),
         ];
     }
 }

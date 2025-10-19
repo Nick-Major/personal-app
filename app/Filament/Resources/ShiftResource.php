@@ -16,6 +16,23 @@ class ShiftResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-clock';
 
+    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
+    protected static ?string $navigationGroup = 'Учет работ';
+    protected static ?string $navigationLabel = 'Смены';
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $modelLabel = 'смена';
+    protected static ?string $pluralModelLabel = 'Смены';
+
+    public static function getPageLabels(): array
+    {
+        return [
+            'index' => 'Смены',
+            'create' => 'Создать смену',
+            'edit' => 'Редактировать смену',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -226,15 +243,22 @@ class ShiftResource extends Resource
                             ->when($data['work_date_to'], fn($q, $date) => $q->whereDate('work_date', '<=', $date));
                     }),
             ])
+            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Редактировать'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Удалить'),
             ])
+            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Удалить выбранные'),
                 ]),
-            ]);
+            ])
+            // ДОБАВЛЯЕМ СОРТИРОВКУ ПО УМОЛЧАНИЮ
+            ->defaultSort('work_date', 'desc');
     }
 
     public static function getRelations(): array
