@@ -16,7 +16,6 @@ class SpecialtyResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     
-    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
     protected static ?string $navigationGroup = 'Справочники';
     protected static ?string $navigationLabel = 'Специальности';
     protected static ?int $navigationSort = 2;
@@ -24,27 +23,25 @@ class SpecialtyResource extends Resource
     protected static ?string $modelLabel = 'специальность';
     protected static ?string $pluralModelLabel = 'Специальности';
 
-    public static function getPageLabels(): array
-    {
-        return [
-            'index' => 'Специальности',
-            'create' => 'Создать специальность',
-            'edit' => 'Редактировать специальность',
-        ];
-    }
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
+                        Forms\Components\TextInput::make('code')
+                            ->label('Код специальности')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Например: GARDENER, DECORATOR...')
+                            ->helperText('Уникальный код для идентификации'),
+                            
                         Forms\Components\TextInput::make('name')
                             ->label('Название специальности')
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true)
-                            ->placeholder('Например: Садовник, Декоратор, Администратор...')
+                            ->placeholder('Например: Садовник, Декоратор...')
                             ->validationMessages([
                                 'unique' => 'Специальность с таким названием уже существует',
                             ]),
@@ -69,22 +66,6 @@ class SpecialtyResource extends Resource
                             ->default(true)
                             ->helperText('Неактивные специальности не будут показываться при выборе'),
                     ])->columns(2),
-                    
-                Forms\Components\Section::make('Категория')
-                    ->schema([
-                        Forms\Components\Select::make('category')
-                            ->label('Категория')
-                            ->options([
-                                'gardening' => 'Садоводство',
-                                'decoration' => 'Декорирование',
-                                'administration' => 'Администрирование',
-                                'technical' => 'Технические работы',
-                                'other' => 'Другое',
-                            ])
-                            ->default('other')
-                            ->required()
-                            ->helperText('Выберите категорию для группировки специальностей'),
-                    ]),
             ]);
     }
 
@@ -92,6 +73,13 @@ class SpecialtyResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('code')
+                    ->label('Код')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('gray'),
+                    
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
@@ -102,27 +90,6 @@ class SpecialtyResource extends Resource
                     ->label('Описание')
                     ->limit(50)
                     ->searchable(),
-                    
-                Tables\Columns\TextColumn::make('category')
-                    ->label('Категория')
-                    ->badge()
-                    ->formatStateUsing(fn ($state) => match($state) {
-                        'gardening' => '🌿 Садоводство',
-                        'decoration' => '🎨 Декорирование',
-                        'administration' => '📊 Администрирование',
-                        'technical' => '🔧 Технические',
-                        'other' => '📁 Другое',
-                        default => $state
-                    })
-                    ->color(fn ($state) => match($state) {
-                        'gardening' => 'success',
-                        'decoration' => 'warning',
-                        'administration' => 'info',
-                        'technical' => 'gray',
-                        'other' => 'gray',
-                        default => 'gray'
-                    })
-                    ->sortable(),
                     
                 Tables\Columns\TextColumn::make('base_hourly_rate')
                     ->label('Ставка')
@@ -151,16 +118,6 @@ class SpecialtyResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('category')
-                    ->label('Категория')
-                    ->options([
-                        'gardening' => 'Садоводство',
-                        'decoration' => 'Декорирование',
-                        'administration' => 'Администрирование',
-                        'technical' => 'Технические работы',
-                        'other' => 'Другое',
-                    ]),
-                    
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Активные')
                     ->placeholder('Все специальности')

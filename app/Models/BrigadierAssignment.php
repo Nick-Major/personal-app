@@ -14,6 +14,7 @@ class BrigadierAssignment extends Model
         'brigadier_id',
         'initiator_id',
         'can_create_requests', // ДОБАВЛЕНО - права Инициатора-Бригадира
+        'comment', // ДОБАВЛЯЕМ
         'status', // 'pending', 'confirmed', 'rejected'
         'confirmed_at',
         'rejected_at', 

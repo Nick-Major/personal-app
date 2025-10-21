@@ -67,6 +67,14 @@ class BrigadierAssignmentResource extends Resource
                             ])
                             ->required()
                             ->default('active'),
+
+                        // ДОБАВЛЯЕМ КОММЕНТАРИЙ
+                        Forms\Components\Textarea::make('comment')
+                            ->label('Комментарий к назначению')
+                            ->maxLength(65535)
+                            ->rows(3)
+                            ->placeholder('Укажите дополнительную информацию для бригадира...')
+                            ->columnSpanFull(),
                     ])->columns(2),
                     
                 Forms\Components\Section::make('Даты назначения')
@@ -117,6 +125,13 @@ class BrigadierAssignmentResource extends Resource
                     ->label('Инициатор')
                     ->searchable(['name', 'surname'])
                     ->sortable(),
+
+                // ДОБАВЛЯЕМ КОЛОНКУ КОММЕНТАРИЯ
+                Tables\Columns\TextColumn::make('comment')
+                    ->label('Комментарий')
+                    ->limit(50)
+                    ->searchable()
+                    ->toggleable(),
                     
                 Tables\Columns\IconColumn::make('can_create_requests')
                     ->label('Может создавать заявки')
@@ -141,7 +156,7 @@ class BrigadierAssignmentResource extends Resource
                     ->label('Создано')
                     ->dateTime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

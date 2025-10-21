@@ -18,14 +18,24 @@ class BrigadierAssignmentController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('=== BRIGADIER ASSIGNMENT STORE ===');
+        \Log::info('Raw request data:', $request->all());
+
         $validated = $request->validate([
             'brigadier_id' => 'required|exists:users,id',
             'initiator_id' => 'required|exists:users,id',
-            // поддерживаем либо одну дату, либо массив дат
             'assignment_date' => 'nullable|date',
             'assignment_dates' => 'nullable|array',
             'assignment_dates.*' => 'date',
+            'dates' => 'nullable|array',
+            'dates.*' => 'date',
+            'comment' => 'nullable|string',
             'status' => 'sometimes|in:pending,confirmed,rejected',
+        ]);
+
+        \Log::info('Validated data with comment:', [
+            'has_comment' => isset($validated['comment']),
+            'comment' => $validated['comment'] ?? 'NOT SET'
         ]);
 
         $dates = [];
@@ -33,16 +43,26 @@ class BrigadierAssignmentController extends Controller
             $dates = $validated['assignment_dates'];
         } elseif (!empty($validated['assignment_date'])) {
             $dates = [$validated['assignment_date']];
+        } elseif (!empty($validated['dates'])) {
+            $dates = $validated['dates'];
         } else {
             return response()->json(['error' => 'assignment_date(s) required'], 422);
         }
 
-        // Используем существующее назначение для пары (brigadier_id, initiator_id) или создаём новое,
-        // чтобы не нарушать уникальный индекс на таблице назначений
+        // Используем существующее назначение для пары (brigadier_id, initiator_id) или создаём новое
         $assignment = BrigadierAssignment::firstOrCreate([
             'brigadier_id' => $validated['brigadier_id'],
             'initiator_id' => $validated['initiator_id'],
+        ], [
+            'status' => $validated['status'] ?? 'pending',
+            'comment' => $validated['comment'] ?? null,
+            'can_create_requests' => false, // значение по умолчанию
         ]);
+
+        // Для существующих записей - обновляем комментарий только если он передан и не пустой
+        if (!$assignment->wasRecentlyCreated && isset($validated['comment']) && !empty($validated['comment'])) {
+            $assignment->update(['comment' => $validated['comment']]);
+        }
 
         $status = $validated['status'] ?? 'pending';
         $uniqueDates = collect($dates)
@@ -62,6 +82,12 @@ class BrigadierAssignmentController extends Controller
             );
         }
 
+        \Log::info('Assignment created/updated:', [
+            'assignment_id' => $assignment->id,
+            'was_recently_created' => $assignment->wasRecentlyCreated,
+            'dates_added' => $uniqueDates->toArray()
+        ]);
+
         return new BrigadierAssignmentResource($assignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
@@ -76,6 +102,7 @@ class BrigadierAssignmentController extends Controller
             'brigadier_id' => 'sometimes|exists:users,id',
             'initiator_id' => 'sometimes|exists:users,id',
             'assignment_date' => 'sometimes|date',
+            'comment' => 'nullable|string',
             'status' => 'sometimes|in:pending,confirmed,rejected',
             'confirmed_at' => 'nullable|date',
             'rejected_at' => 'nullable|date',
@@ -138,7 +165,6 @@ class BrigadierAssignmentController extends Controller
         return new BrigadierAssignmentResource($brigadierAssignment->load(['brigadier', 'initiator', 'assignmentDates']));
     }
 
-    // Добавьте этот метод в существующий BrigadierAssignmentController.php
     public function myAssignments()
     {
         $userId = auth()->id();

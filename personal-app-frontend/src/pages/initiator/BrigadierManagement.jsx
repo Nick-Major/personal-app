@@ -146,34 +146,18 @@ const BrigadierManagement = () => {
     if (!selectedExecutor || selectedDates.length === 0) return;
 
     try {
-      // Предотвращение конфликтов: бригадир не может выходить как Исполнитель и не может быть назначен бригадиром дважды на одну дату
-      // Здесь проверяем только конфликты по уже загруженным назначениям
-      const buildKey = (brigadierId, initiatorId, dateYmd) => `${brigadierId}|${initiatorId}|${dateYmd}`;
-      const alreadyAssignedKeys = new Set(
-        assignmentsSource
-          .filter(a => a.brigadier?.id != null && a.initiator?.id != null)
-          .flatMap(a => {
-            const dates = getAssignmentDates(a);
-            return dates.map(d => buildKey(a.brigadier.id, a.initiator.id, d));
-          })
-      );
-
       const uniqueDates = Array.from(new Set(selectedDates)).sort();
-      const candidateKeys = uniqueDates.map(d => buildKey(selectedExecutor.id, user.id, d));
-      const datesToCreate = uniqueDates.filter((d, idx) => !alreadyAssignedKeys.has(candidateKeys[idx]));
-      const conflictedDates = uniqueDates.filter((d, idx) => alreadyAssignedKeys.has(candidateKeys[idx]));
-
-      // Создаём одно назначение на сразу все выбранные даты
+      
       const payload = {
         brigadier_id: selectedExecutor.id,
         initiator_id: user.id,
-        assignment_dates: datesToCreate,
-        comment: assignmentComment || undefined,
+        assignment_dates: uniqueDates,
+        comment: assignmentComment || '',
         status: 'pending'
       };
-      console.info('[BrigadierManagement] creating assignment with payload:', payload);
+      
+      console.log('Creating assignment:', payload);
       await executorService.createAssignment(payload);
-
       await loadAssignments();
       
       setShowAssignmentModal(false);
@@ -181,13 +165,7 @@ const BrigadierManagement = () => {
       setAssignmentComment('');
       setSelectedExecutor(null);
       
-      if (conflictedDates.length > 0 && datesToCreate.length > 0) {
-        alert(`Часть дат пропущена из-за конфликтов: ${conflictedDates.join(', ')}. Остальные назначения созданы и ожидают подтверждения.`);
-      } else if (conflictedDates.length > 0 && datesToCreate.length === 0) {
-        alert(`Назначения не созданы: выбранные даты уже заняты для этого бригадира (${conflictedDates.join(', ')}).`);
-      } else {
-        alert('Бригадир успешно назначен на выбранные даты! Ожидает подтверждения.');
-      }
+      alert('Бригадир успешно назначен на выбранные даты! Ожидает подтверждения.');
     } catch (error) {
       console.error('Error assigning brigadier:', error);
       alert('Ошибка при назначении бригадира: ' + (error.response?.data?.error || error.message));
