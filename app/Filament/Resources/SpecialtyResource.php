@@ -29,14 +29,6 @@ class SpecialtyResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
-                        Forms\Components\TextInput::make('code')
-                            ->label('Код специальности')
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true)
-                            ->placeholder('Например: GARDENER, DECORATOR...')
-                            ->helperText('Уникальный код для идентификации'),
-                            
                         Forms\Components\TextInput::make('name')
                             ->label('Название специальности')
                             ->required()
@@ -45,6 +37,12 @@ class SpecialtyResource extends Resource
                             ->validationMessages([
                                 'unique' => 'Специальность с таким названием уже существует',
                             ]),
+                            
+                        Forms\Components\TextInput::make('category')
+                            ->label('Категория')
+                            ->maxLength(255)
+                            ->placeholder('Например: Садовники, Отделочники...')
+                            ->helperText('Группа для группировки специальностей'),
                             
                         Forms\Components\Textarea::make('description')
                             ->label('Описание')
@@ -58,6 +56,8 @@ class SpecialtyResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->step(1)
+                            ->required()
+                            ->default(0)
                             ->placeholder('0')
                             ->helperText('Базовая почасовая ставка для этой специальности'),
                             
@@ -73,23 +73,25 @@ class SpecialtyResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('code')
-                    ->label('Код')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->color('gray'),
-                    
                 Tables\Columns\TextColumn::make('name')
                     ->label('Название')
                     ->searchable()
                     ->sortable()
                     ->weight('medium'),
                     
+                Tables\Columns\TextColumn::make('category')
+                    ->label('Категория')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('—'),
+                    
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
                     ->limit(50)
-                    ->searchable(),
+                    ->searchable()
+                    ->placeholder('—'),
                     
                 Tables\Columns\TextColumn::make('base_hourly_rate')
                     ->label('Ставка')
@@ -111,6 +113,13 @@ class SpecialtyResource extends Resource
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
                     
+                Tables\Columns\TextColumn::make('work_requests_count')
+                    ->label('Заявок')
+                    ->counts('workRequests')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'primary' : 'gray'),
+                    
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создана')
                     ->dateTime('d.m.Y H:i')
@@ -127,6 +136,10 @@ class SpecialtyResource extends Resource
                 Tables\Filters\Filter::make('has_users')
                     ->label('С пользователями')
                     ->query(fn ($query) => $query->has('users')),
+                    
+                Tables\Filters\SelectFilter::make('category')
+                    ->label('Категория')
+                    ->options(fn () => Specialty::query()->pluck('category', 'category')->filter()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

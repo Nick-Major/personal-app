@@ -10,15 +10,19 @@ class Contractor extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'contact_person',
-        'contact_person_name',
-        'contact_person_phone',
-        'contact_person_email',
-        'phone',
-        'email',
-        'specializations',
-        'is_active',
+        'name',                    // Название компании
+        'contact_person',          // ФИО контактного лица
+        'contact_person_phone',    // Телефон контактного лица
+        'contact_person_email',    // Email контактного лица
+        'phone',                   // Основной телефон компании
+        'email',                   // Основной email компании
+        'user_id',                 // User-представитель компании
+        'address',                 // Адрес компании
+        'inn',                     // ИНН
+        'bank_details',           // Банковские реквизиты
+        'specializations',        // Специализации компании
+        'notes',                  // Дополнительные заметки
+        'is_active',              // Активен ли подрядчик
     ];
 
     protected $casts = [
@@ -26,19 +30,61 @@ class Contractor extends Model
         'is_active' => 'boolean',
     ];
 
-    // Связи
-    public function users()
+    // === ОБНОВЛЕННЫЕ СВЯЗИ ===
+    
+    // User-представитель этой компании
+    public function user()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsTo(User::class);
     }
 
-    public function shifts()
+    // Персонализированные исполнители этой компании
+    public function executors()
     {
-        return $this->hasMany(Shift::class);
+        return $this->hasMany(User::class, 'contractor_id')
+                    ->whereHas('roles', function($q) {
+                        $q->where('name', 'executor');
+                    });
     }
 
+    // Заявки, где этот подрядчик участвует
     public function workRequests()
     {
-        return $this->hasManyThrough(WorkRequest::class, Shift::class);
+        return $this->hasMany(WorkRequest::class, 'contractor_id');
+    }
+
+    // Обезличенные смены подрядчика
+    public function anonymousShifts()
+    {
+        return $this->hasMany(Shift::class)->whereNull('user_id');
+    }
+
+    // Все смены связанные с подрядчиком
+    public function allShifts()
+    {
+        return Shift::where('contractor_id', $this->id)
+                   ->orWhereHas('user', function($q) {
+                       $q->where('contractor_id', $this->id);
+                   });
+    }
+
+    // === МЕТОДЫ ===
+    
+    public function getTotalExecutorsCount()
+    {
+        return $this->executors()->count();
+    }
+
+    public function getActiveShiftsCount()
+    {
+        return $this->allShifts()->where('status', 'active')->count();
+    }
+
+    public function getCompletedShiftsThisMonth()
+    {
+        return $this->allShifts()
+                   ->where('status', 'completed')
+                   ->where('work_date', '>=', now()->startOfMonth())
+                   ->count();
     }
 }

@@ -11,19 +11,15 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
-use Filament\Notifications\Notification;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
-
-    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
-    protected static ?string $navigationGroup = 'Управление доступом';
+    protected static ?string $navigationGroup = 'Управление персоналом';
     protected static ?string $navigationLabel = 'Пользователи';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'пользователь';
     protected static ?string $pluralModelLabel = 'Пользователи';
@@ -55,7 +51,8 @@ class UserResource extends Resource
                             
                         Forms\Components\TextInput::make('patronymic')
                             ->label('Отчество')
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->nullable(),
                             
                         Forms\Components\TextInput::make('email')
                             ->label('Email')
@@ -80,84 +77,80 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->label('Телефон')
                             ->tel()
-                            ->maxLength(255),
+                            ->maxLength(20)
+                            ->nullable(),
                             
                         Forms\Components\TextInput::make('telegram_id')
                             ->label('Telegram ID')
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->nullable(),
                     ])->columns(2),
                     
                 Forms\Components\Section::make('Роли и специальности')
                     ->schema([
-                        Forms\Components\Toggle::make('is_contractor')
-                            ->label('Подрядчик')
-                            ->reactive(),
-                            
-                        Forms\Components\Toggle::make('is_always_brigadier')
-                            ->label('Всегда бригадир'),
-                            
-                        Forms\Components\Select::make('contractor_id')
-                            ->label('Компания-подрядчик')
-                            ->relationship('contractor', 'name')
-                            ->visible(fn (callable $get) => $get('is_contractor')),
-                            
-                        Forms\Components\BelongsToManyCheckboxList::make('specialties')
-                            ->label('Специальности')
-                            ->relationship('specialties', 'name')
-                            ->searchable(),
-                            
                         Forms\Components\Select::make('roles')
                             ->label('Роли в системе')
                             ->relationship('roles', 'name')
                             ->multiple()
                             ->preload()
-                            ->reactive()
+                            ->searchable()
+                            ->live()
                             ->afterStateUpdated(function ($set, $state) {
-                                // Сбрасываем права при смене роли
-                                $set('permissions', []);
+                                // Сбрасываем тип исполнителя при снятии роли executor
+                                if (!in_array('executor', $state ?? [])) {
+                                    $set('contractor_id', null);
+                                }
+                            })
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'Выберите хотя бы одну роль',
+                            ]),
+                            
+                        // ДОБАВЛЯЕМ ПЕРЕКЛЮЧАТЕЛЬ ТИПА ИСПОЛНИТЕЛЯ
+                        Forms\Components\Radio::make('executor_type')
+                            ->label('Тип исполнителя')
+                            ->options([
+                                'our' => '👷 Наш исполнитель (сотрудник компании)',
+                                'contractor' => '🏢 Исполнитель подрядчика',
+                            ])
+                            ->live()
+                            ->required(fn (callable $get): bool => 
+                                collect($get('roles') ?? [])->contains('executor')
+                            )
+                            ->visible(fn (callable $get): bool => 
+                                collect($get('roles') ?? [])->contains('executor')
+                            )
+                            ->afterStateUpdated(function ($set, $state) {
+                                // При выборе "наш исполнитель" очищаем подрядчика
+                                if ($state === 'our') {
+                                    $set('contractor_id', null);
+                                }
                             }),
                             
-                        Forms\Components\Select::make('permissions')
-                            ->label('Специальные права')
-                            ->relationship('permissions', 'name')
-                            ->multiple()
-                            ->preload()
+                        // ОБНОВЛЯЕМ ПОЛЕ ПОДРЯДЧИКА
+                        Forms\Components\Select::make('contractor_id')
+                            ->label('Компания-подрядчик')
+                            ->relationship('contractor', 'name')
                             ->searchable()
-                            ->options(function ($get) {
-                                $roles = $get('roles') ?? [];
-                                
-                                // Показываем право редактирования БД только Инициаторам и Диспетчерам
-                                $allowedRoles = ['initiator', 'dispatcher'];
-                                $hasAllowedRole = !empty(array_intersect($allowedRoles, $roles));
-                                
-                                if ($hasAllowedRole) {
-                                    return Permission::where('name', 'edit_database')
-                                        ->orWhere('name', 'like', 'view_%')
-                                        ->pluck('name', 'name') // ИСПРАВЛЕНО: убираем description
-                                        ->map(function ($name) {
-                                            return match($name) {
-                                                'edit_database' => '📊 Редактирование базы данных',
-                                                'view_projects' => '👀 Просмотр проектов',
-                                                'view_purposes' => '👀 Просмотр назначений',
-                                                'view_addresses' => '👀 Просмотр адресов',
-                                                'view_work_requests' => '👀 Просмотр заявок',
-                                                default => $name
-                                            };
-                                        });
-                                }
-                                
-                                return [];
-                            })
-                            ->helperText(function ($get) {
-                                $roles = $get('roles') ?? [];
-                                $allowedRoles = ['initiator', 'dispatcher'];
-                                $hasAllowedRole = !empty(array_intersect($allowedRoles, $roles));
-                                
-                                if ($hasAllowedRole) {
-                                    return '✅ Можете дать право на редактирование БД этому пользователю';
-                                }
-                                return '⚠️ Права редактирования БД доступны только Инициаторам и Диспетчерам';
-                            }),
+                            ->preload()
+                            ->helperText('Выберите компанию-подрядчика для этого исполнителя')
+                            ->visible(fn (callable $get): bool => 
+                                collect($get('roles') ?? [])->contains('executor') && 
+                                $get('executor_type') === 'contractor'
+                            )
+                            ->required(fn (callable $get): bool => 
+                                collect($get('roles') ?? [])->contains('executor') && 
+                                $get('executor_type') === 'contractor'
+                            )
+                            ->validationMessages([
+                                'required' => 'Для исполнителя подрядчика необходимо выбрать компанию',
+                            ]),
+                            
+                        Forms\Components\BelongsToManyCheckboxList::make('specialties')
+                            ->label('Специальности')
+                            ->relationship('specialties', 'name')
+                            ->searchable()
+                            ->helperText('Специальности, по которым пользователь может работать'),
                     ]),
                     
                 Forms\Components\Section::make('Дополнительно')
@@ -165,6 +158,7 @@ class UserResource extends Resource
                         Forms\Components\Textarea::make('notes')
                             ->label('Заметки')
                             ->maxLength(65535)
+                            ->nullable()
                             ->columnSpanFull(),
                     ]),
             ]);
@@ -174,20 +168,11 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('surname')
-                    ->label('Фамилия')
-                    ->searchable()
-                    ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Имя')
-                    ->searchable()
-                    ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('patronymic')
-                    ->label('Отчество')
-                    ->searchable()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('full_name')
+                    ->label('ФИО')
+                    ->searchable(['name', 'surname', 'patronymic'])
+                    ->sortable()
+                    ->weight('medium'),
                     
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
@@ -196,20 +181,27 @@ class UserResource extends Resource
                     
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Телефон')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                     
-                Tables\Columns\IconColumn::make('is_contractor')
-                    ->label('Подрядчик')
-                    ->boolean(),
-                    
-                Tables\Columns\IconColumn::make('is_always_brigadier')
-                    ->label('Бригадир')
-                    ->boolean(),
-                    
-                Tables\Columns\TextColumn::make('specialties.name')
-                    ->label('Специальности')
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Тип пользователя')
                     ->badge()
-                    ->separator(', '),
+                    ->getStateUsing(function ($record) {
+                        if ($record->isExternalContractor()) return '👑 Подрядчик';
+                        if ($record->isOurExecutor()) return '👷 Наш исполнитель';
+                        if ($record->isContractorExecutor()) return '🏢 Исполнитель подрядчика';
+                        if ($record->isInitiator()) return '📋 Инициатор';
+                        if ($record->isDispatcher()) return '📞 Диспетчер';
+                        return '❓ Другое';
+                    })
+                    ->colors([
+                        '👑 Подрядчик' => 'warning',
+                        '👷 Наш исполнитель' => 'success', 
+                        '🏢 Исполнитель подрядчика' => 'info',
+                        '📋 Инициатор' => 'primary',
+                        '📞 Диспетчер' => 'gray',
+                    ]),
                     
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Роли')
@@ -230,44 +222,27 @@ class UserResource extends Resource
                         'gray' => 'contractor',
                     ]),
                     
-                Tables\Columns\IconColumn::make('can_edit_database')
-                    ->label('Редакт. БД')
-                    ->getStateUsing(fn ($record) => $record->hasPermissionTo('edit_database'))
-                    ->boolean()
-                    ->trueIcon('heroicon-o-cog-6-tooth')
-                    ->trueColor('success')
-                    ->falseColor('gray')
-                    ->tooltip(fn ($record) => $record->hasPermissionTo('edit_database') 
-                        ? 'Может редактировать БД' 
-                        : 'Не может редактировать БД'),
+                Tables\Columns\TextColumn::make('contractor.name')
+                    ->label('Подрядчик')
+                    ->searchable()
+                    ->toggleable()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+                    
+                Tables\Columns\TextColumn::make('specialties.name')
+                    ->label('Специальности')
+                    ->badge()
+                    ->separator(', ')
+                    ->limitList(2)
+                    ->toggleable(),
                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // ОБНОВЛЯЕМ ФИЛЬТРЫ С РУССКИМИ НАЗВАНИЯМИ
-                Tables\Filters\TernaryFilter::make('is_contractor')
-                    ->label('Подрядчики')
-                    ->placeholder('Все пользователи')
-                    ->trueLabel('Только подрядчики')
-                    ->falseLabel('Только не подрядчики'),
-                    
-                Tables\Filters\TernaryFilter::make('is_always_brigadier')
-                    ->label('Бригадиры')
-                    ->placeholder('Все пользователи')
-                    ->trueLabel('Только бригадиры')
-                    ->falseLabel('Только не бригадиры'),
-                    
-                Tables\Filters\SelectFilter::make('specialties')
-                    ->label('Специальность')
-                    ->relationship('specialties', 'name')
-                    ->multiple()
-                    ->searchable()
-                    ->preload(),
-                    
                 Tables\Filters\SelectFilter::make('roles')
                     ->label('Роль')
                     ->relationship('roles', 'name')
@@ -275,43 +250,76 @@ class UserResource extends Resource
                     ->preload()
                     ->searchable(),
                     
-                Tables\Filters\TernaryFilter::make('can_edit_database')
-                    ->label('Редактирование БД')
-                    ->placeholder('Все пользователи')
-                    ->trueLabel('Могут редактировать БД')
-                    ->falseLabel('Не могут редактировать БД')
-                    ->query(fn ($query, array $data) => match($data['value'] ?? null) {
-                        true => $query->whereHas('permissions', fn($q) => $q->where('name', 'edit_database')),
-                        false => $query->whereDoesntHave('permissions', fn($q) => $q->where('name', 'edit_database')),
-                        default => $query,
-                    }),
+                Tables\Filters\SelectFilter::make('contractor_id')
+                    ->label('Подрядчик')
+                    ->relationship('contractor', 'name')
+                    ->searchable()
+                    ->preload(),
+                    
+                // ОБНОВЛЯЕМ ФИЛЬТРЫ ДЛЯ ЧЕТКОГО РАЗДЕЛЕНИЯ
+                Tables\Filters\Filter::make('our_executors')
+                    ->label('👷 Наши исполнители')
+                    ->query(fn ($query) => $query->ourExecutors()),
+                    
+                Tables\Filters\Filter::make('contractor_executors')
+                    ->label('🏢 Исполнители подрядчиков')
+                    ->query(fn ($query) => $query->contractorExecutors()),
+                    
+                Tables\Filters\Filter::make('external_contractors')
+                    ->label('👑 Подрядчики')
+                    ->query(fn ($query) => $query->externalContractors()),
+                    
+                Tables\Filters\Filter::make('initiators')
+                    ->label('📋 Инициаторы')
+                    ->query(fn ($query) => $query->role('initiator')),
+                    
+                Tables\Filters\Filter::make('dispatchers')
+                    ->label('📞 Диспетчеры')
+                    ->query(fn ($query) => $query->role('dispatcher')),
+                    
+                Tables\Filters\SelectFilter::make('specialties')
+                    ->label('Специальность')
+                    ->relationship('specialties', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
             ])
-            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
                     
-                Tables\Actions\Action::make('toggle_database_edit')
-                    ->label('Право редакт. БД')
-                    ->icon('heroicon-o-cog-6-tooth')
-                    ->action(function (User $record) {
-                        // ... существующий код действия ...
-                    })
-                    ->visible(fn () => auth()->user()->hasRole('admin'))
-                    ->color(fn (User $record) => $record->hasPermissionTo('edit_database') ? 'danger' : 'success')
-                    ->tooltip(fn (User $record) => $record->hasPermissionTo('edit_database') 
-                        ? 'Отозвать право редактирования БД' 
-                        : 'Дать право редактирования БД'),
-                        
+                Tables\Actions\Action::make('view_shifts')
+                    ->label('Смены')
+                    ->icon('heroicon-o-calendar')
+                    ->url(fn (User $record) => ShiftResource::getUrl('index', [
+                        'tableFilters[user][values]' => [$record->id]
+                    ]))
+                    ->color('gray')
+                    ->hidden(fn ($record) => !$record->canHaveShifts()),
+                    
+                Tables\Actions\Action::make('view_assignments')
+                    ->label('Назначения бригадиром')
+                    ->icon('heroicon-o-user-plus')
+                    ->url(fn (User $record) => BrigadierAssignmentResource::getUrl('index', [
+                        'tableFilters[brigadier][values]' => [$record->id]
+                    ]))
+                    ->color('gray')
+                    ->hidden(fn ($record) => !$record->canHaveShifts()),
+                    
                 Tables\Actions\DeleteAction::make()
                     ->label('Удалить'),
             ])
-            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Удалить выбранные'),
                 ]),
+            ])
+            ->emptyStateHeading('Нет пользователей')
+            ->emptyStateDescription('Создайте первого пользователя.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Создать пользователя'),
             ])
             ->defaultSort('surname', 'asc');
     }
@@ -319,6 +327,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
+            RelationManagers\SpecialtiesRelationManager::class,
             RelationManagers\InitiatedWorkRequestsRelationManager::class,
             RelationManagers\BrigadierWorkRequestsRelationManager::class,
             RelationManagers\DispatcherWorkRequestsRelationManager::class,
@@ -339,6 +348,6 @@ class UserResource extends Resource
     
     public static function canAccess(): bool
     {
-        return auth()->user()->hasRole('admin');
+        return auth()->user()->hasAnyRole(['admin', 'initiator', 'dispatcher']);
     }
 }

@@ -9,16 +9,19 @@ return new class extends Migration
     public function up()
     {
         Schema::table('work_requests', function (Blueprint $table) {
-            if (!Schema::hasColumn('work_requests', 'selected_payer_company')) {
-                $table->string('selected_payer_company')->nullable()->after('work_type_id');
-            }
+            // Просто добавляем поле без указания позиции
+            $table->foreignId('address_id')
+                ->nullable()
+                ->constrained('addresses')
+                ->nullOnDelete();
         });
     }
 
     public function down()
     {
         Schema::table('work_requests', function (Blueprint $table) {
-            $table->dropColumn('selected_payer_company');
+            $table->dropForeign(['address_id']);
+            $table->dropColumn('address_id');
         });
     }
 };

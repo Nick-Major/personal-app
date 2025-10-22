@@ -67,9 +67,9 @@ class Shift extends Model
         return $this->belongsTo(WorkType::class);
     }
 
-    public function expenses()
+    public function shiftExpenses()
     {
-        return $this->hasMany(Expense::class);
+        return $this->hasMany(ShiftExpense::class);
     }
 
     public function segments()
@@ -119,6 +119,66 @@ class Shift extends Model
         $totalMinutes = $this->visitedLocations->sum('duration_minutes');
         $this->update(['worked_minutes' => $totalMinutes]);
         return $totalMinutes;
+    }
+
+    // === МЕТОДЫ ДЛЯ НОВОЙ СТРУКТУРЫ РАСЧЕТОВ ===
+
+    /**
+     * Расчет базовой суммы (ставка + надбавка) × часы
+     */
+    public function getBaseAmountAttribute()
+    {
+        $hours = $this->worked_minutes / 60; // Переводим минуты в часы
+        $rate = $this->base_rate + ($this->workType->premium_rate ?? 0);
+        return $rate * $hours;
+    }
+
+    /**
+     * Расчет бонуса за отсутствие обеда
+     */
+    public function getNoLunchBonusAttribute()
+    {
+        if (!$this->no_lunch) {
+            return 0;
+        }
+        
+        $settings = \App\Models\ShiftSetting::first();
+        $bonusHours = $settings ? $settings->no_lunch_bonus_hours : 1;
+        $rate = $this->base_rate + ($this->workType->premium_rate ?? 0);
+        
+        return $rate * $bonusHours;
+    }
+
+    /**
+     * Расчет транспортной надбавки
+     */
+    public function getTransportFeeAmountAttribute()
+    {
+        if (!$this->has_transport_fee) {
+            return 0;
+        }
+        
+        $settings = \App\Models\ShiftSetting::first();
+        return $settings ? $settings->transport_fee : 0;
+    }
+
+    /**
+     * Сумма операционных расходов
+     */
+    public function getExpensesAmountAttribute()
+    {
+        return $this->shiftExpenses->sum('amount');
+    }
+
+    /**
+     * Итоговая сумма к выплате
+     */
+    public function getCalculatedTotalAttribute()
+    {
+        return $this->base_amount 
+             + $this->no_lunch_bonus 
+             + $this->transport_fee_amount 
+             + $this->expenses_amount;
     }
 }
 

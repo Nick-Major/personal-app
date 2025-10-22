@@ -10,26 +10,30 @@ class WorkType extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code', 
-        'name', 
-        'description',
-        'category',
-        'requires_special_equipment',
-        'is_active',
-        'default_duration_hours',
-        'complexity_level'
+        'name',
+        'description', 
+        'premium_rate', // ДОБАВЛЯЕМ
+        'is_active'
     ];
 
     protected $casts = [
-        'requires_special_equipment' => 'boolean',
+        'premium_rate' => 'decimal:2',
         'is_active' => 'boolean',
-        'default_duration_hours' => 'decimal:2',
-        'complexity_level' => 'integer',
     ];
 
-    // ДОБАВЛЯЕМ СВЯЗЬ С ЗАЯВКАМИ
+    // Связи остаются без изменений
     public function workRequests()
     {
         return $this->hasMany(WorkRequest::class);
+    }
+
+    public function shifts()
+    {
+        return $this->hasMany(Shift::class);
+    }
+
+    public function rates()
+    {
+        return $this->hasMany(Rate::class);
     }
 }

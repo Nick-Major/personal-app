@@ -10,19 +10,16 @@ class Address extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
+        'short_name',     // было 'name'
         'full_address', 
-        'description'
-        // Убираем project_id из fillable
+        'location_type'   // было 'description'
     ];
 
-    // Меняем belongsTo на belongsToMany
     public function projects()
     {
         return $this->belongsToMany(Project::class);
     }
 
-    // Остальные связи остаются без изменений
     public function addressRules()
     {
         return $this->hasMany(PurposeAddressRule::class);

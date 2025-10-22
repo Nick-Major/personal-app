@@ -50,7 +50,7 @@ class AddressResource extends Resource
                             ->label('Проекты'),
 
                         Forms\Components\TextInput::make('name')
-                            ->label('Название места')
+                            ->label('Короткое Название')
                             ->required()
                             ->maxLength(255),
                         
@@ -102,7 +102,8 @@ class AddressResource extends Resource
                 
                 Tables\Columns\TextColumn::make('work_requests_count')
                     ->label('Заявок')
-                    ->counts('workRequests'),
+                    ->counts('workRequests')
+                    ->sortable(),
 
                 // ДОБАВЛЯЕМ: количество проектов
                 Tables\Columns\TextColumn::make('projects_count')
