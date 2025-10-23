@@ -68,6 +68,12 @@ class Contractor extends Model
                    });
     }
 
+    // Добавляем в Contractor модель:
+    public function contractorRates()
+    {
+        return $this->hasMany(ContractorRate::class);
+    }
+
     // === МЕТОДЫ ===
     
     public function getTotalExecutorsCount()
@@ -86,5 +92,15 @@ class Contractor extends Model
                    ->where('status', 'completed')
                    ->where('work_date', '>=', now()->startOfMonth())
                    ->count();
+    }
+
+    public function hasCategory($categoryId)
+    {
+        return $this->contractorRates()
+            ->whereHas('specialty', function($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            })
+            ->where('is_active', true)
+            ->exists();
     }
 }

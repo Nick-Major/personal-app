@@ -1,5 +1,4 @@
 <?php
-// app/Models/Specialty.php
 
 namespace App\Models;
 
@@ -11,9 +10,9 @@ class Specialty extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 
+        'name',
         'description',
-        'category', // ДОБАВЛЕНО
+        'category_id', // ИЗМЕНЕНО: было category (string), теперь category_id
         'base_hourly_rate',
         'is_active'
     ];
@@ -23,10 +22,23 @@ class Specialty extends Model
         'is_active' => 'boolean',
     ];
 
+    // НОВАЯ СВЯЗЬ
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'user_specialties')
+                    ->withPivot('base_hourly_rate', 'assigned_at', 'assigned_by')
                     ->withTimestamps();
+    }
+
+    // НОВАЯ СВЯЗЬ
+    public function contractorRates()
+    {
+        return $this->hasMany(ContractorRate::class);
     }
 
     public function workRequests()
@@ -39,16 +51,5 @@ class Specialty extends Model
         return $this->hasMany(Shift::class);
     }
 
-    public function getRateWithPremium($workType = null)
-    {
-        $baseRate = $this->base_hourly_rate;
-        
-        if ($workType && $workType->premium_rate > 0) {
-            return $baseRate + $workType->premium_rate;
-        }
-        
-        return $baseRate;
-    }
+    // УБИРАЕМ метод getRateWithPremium т.к. WorkType больше не участвует в расчетах
 }
-
-

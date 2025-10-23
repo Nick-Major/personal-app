@@ -28,10 +28,4 @@ class ShiftExpense extends Model
     {
         return $this->belongsTo(Shift::class);
     }
-
-    // УДАЛЯЕМ связь с receipts - переходим на receipt_photo
-    // public function receipts()
-    // {
-    //     return $this->hasMany(Receipt::class);
-    // }
 }

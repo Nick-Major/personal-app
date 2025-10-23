@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SpecialtyResource\Pages;
 use App\Models\Specialty;
+use App\Models\Category;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,10 +39,22 @@ class SpecialtyResource extends Resource
                                 'unique' => 'Специальность с таким названием уже существует',
                             ]),
                             
-                        Forms\Components\TextInput::make('category')
+                        // ЗАМЕНЯЕМ текстовое поле на связь с Category
+                        Forms\Components\Select::make('category_id')
                             ->label('Категория')
-                            ->maxLength(255)
-                            ->placeholder('Например: Садовники, Отделочники...')
+                            ->relationship('category', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Название категории')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Описание')
+                                    ->maxLength(65535),
+                            ])
                             ->helperText('Группа для группировки специальностей'),
                             
                         Forms\Components\Textarea::make('description')
@@ -59,7 +72,7 @@ class SpecialtyResource extends Resource
                             ->required()
                             ->default(0)
                             ->placeholder('0')
-                            ->helperText('Базовая почасовая ставка для этой специальности'),
+                            ->helperText('Базовая почасовая ставка для наших исполнителей'),
                             
                         Forms\Components\Toggle::make('is_active')
                             ->label('Активная специальность')
@@ -79,12 +92,13 @@ class SpecialtyResource extends Resource
                     ->sortable()
                     ->weight('medium'),
                     
-                Tables\Columns\TextColumn::make('category')
+                // ОБНОВЛЯЕМ отображение категории
+                Tables\Columns\TextColumn::make('category.name')
                     ->label('Категория')
                     ->searchable()
                     ->sortable()
                     ->badge()
-                    ->color('gray')
+                    ->color('primary')
                     ->placeholder('—'),
                     
                 Tables\Columns\TextColumn::make('description')
@@ -113,6 +127,13 @@ class SpecialtyResource extends Resource
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
                     
+                Tables\Columns\TextColumn::make('contractor_rates_count')
+                    ->label('Ставок подрядчиков')
+                    ->counts('contractorRates')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'warning' : 'gray'),
+                    
                 Tables\Columns\TextColumn::make('work_requests_count')
                     ->label('Заявок')
                     ->counts('workRequests')
@@ -137,9 +158,12 @@ class SpecialtyResource extends Resource
                     ->label('С пользователями')
                     ->query(fn ($query) => $query->has('users')),
                     
+                // ОБНОВЛЯЕМ фильтр категорий
                 Tables\Filters\SelectFilter::make('category')
                     ->label('Категория')
-                    ->options(fn () => Specialty::query()->pluck('category', 'category')->filter()),
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -174,7 +198,7 @@ class SpecialtyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Можно добавить RelationManager для пользователей с этой специальностью
+            // Можно добавить RelationManager для ставок подрядчиков
         ];
     }
 

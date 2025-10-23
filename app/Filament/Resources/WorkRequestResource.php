@@ -4,6 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\WorkRequestResource\Pages;
 use App\Models\WorkRequest;
+use App\Models\Category;
+use App\Models\Project;
+use App\Models\Purpose;
+use App\Models\Address;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -15,23 +19,12 @@ class WorkRequestResource extends Resource
     protected static ?string $model = WorkRequest::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-
-    // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
     protected static ?string $navigationGroup = 'Учет работ';
     protected static ?string $navigationLabel = 'Заявки';
     protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'заявка';
     protected static ?string $pluralModelLabel = 'Заявки';
-
-    public static function getPageLabels(): array
-    {
-        return [
-            'index' => 'Заявки',
-            'create' => 'Создать заявку',
-            'edit' => 'Редактировать заявку',
-        ];
-    }
 
     public static function form(Form $form): Form
     {
@@ -43,36 +36,82 @@ class WorkRequestResource extends Resource
                             ->label('Номер заявки')
                             ->disabled()
                             ->default('auto-generated'),
-                            
+
                         Forms\Components\Select::make('initiator_id')
                             ->label('Инициатор')
                             ->relationship('initiator', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
-                            
+
                         Forms\Components\Select::make('brigadier_id')
                             ->label('Бригадир')
                             ->relationship('brigadier', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
-                            
-                        Forms\Components\Select::make('specialty_id')
-                            ->label('Специальность')
-                            ->relationship('specialty', 'name')
+
+                        // ЗАМЕНЯЕМ specialty_id на category_id
+                        Forms\Components\Select::make('category_id')
+                            ->label('Категория специалистов')
+                            ->relationship('category', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
-                            
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                // Автоматически определяем доступные типы исполнителей
+                                $category = Category::find($state);
+                                if ($category) {
+                                    $hasOur = $category->hasOurExecutors();
+                                    $hasContractors = $category->availableContractors()->isNotEmpty();
+                                    
+                                    // Сбрасываем тип исполнителя при смене категории
+                                    $set('executor_type', null);
+                                    
+                                    // Обновляем опции типа исполнителя
+                                    $options = [];
+                                    if ($hasOur) $options['our_staff'] = 'Наш персонал';
+                                    if ($hasContractors) {
+                                        $contractors = $category->availableContractors();
+                                        foreach ($contractors as $contractor) {
+                                            $options["contractor_{$contractor->id}"] = "Подрядчик: {$contractor->name}";
+                                        }
+                                    }
+                                    // Здесь нужно обновить options для executor_type
+                                }
+                            }),
+
                         Forms\Components\Select::make('work_type_id')
                             ->label('Вид работ')
                             ->relationship('workType', 'name')
                             ->searchable()
+                            ->preload(),
+
+                        // НОВОЕ: Адрес
+                        Forms\Components\Select::make('address_id')
+                            ->label('Адрес выполнения работ')
+                            ->relationship('address', 'short_name')
+                            ->searchable()
                             ->preload()
-                            ->required(),
+                            ->getOptionLabelFromRecordUsing(fn (Address $record) => $record->short_name . ' - ' . $record->full_address),
                     ])->columns(2),
-                    
+
+                Forms\Components\Section::make('Проект и назначение')
+                    ->schema([
+                        Forms\Components\Select::make('project_id')
+                            ->label('Проект')
+                            ->relationship('project', 'name')
+                            ->searchable()
+                            ->preload(),
+
+                        Forms\Components\Select::make('purpose_id')
+                            ->label('Назначение')
+                            ->relationship('purpose', 'name')
+                            ->searchable()
+                            ->preload(),
+                    ])->columns(2),
+
                 Forms\Components\Section::make('Дата и параметры работ')
                     ->schema([
                         Forms\Components\DatePicker::make('work_date')
@@ -80,56 +119,84 @@ class WorkRequestResource extends Resource
                             ->required()
                             ->native(false),
 
-                            // ДОБАВЬТЕ ЭТО ПОЛЕ
                         Forms\Components\TimePicker::make('start_time')
                             ->label('Время начала работ')
                             ->required()
                             ->seconds(false)
                             ->displayFormat('H:i'),
-                            
+
                         Forms\Components\Select::make('executor_type')
                             ->label('Тип исполнителя')
-                            ->options([
-                                'our_staff' => 'Наш персонал',
-                                'contractor' => 'Подрядчик',
-                            ])
-                            ->required(),
-                            
+                            ->options(function ($get) {
+                                $categoryId = $get('category_id');
+                                if (!$categoryId) return [];
+                                
+                                $category = Category::find($categoryId);
+                                if (!$category) return [];
+                                
+                                $options = [];
+                                if ($category->hasOurExecutors()) {
+                                    $options['our_staff'] = 'Наш персонал';
+                                }
+                                
+                                $contractors = $category->availableContractors();
+                                foreach ($contractors as $contractor) {
+                                    $options["contractor_{$contractor->id}"] = "Подрядчик: {$contractor->name}";
+                                }
+                                
+                                return $options;
+                            })
+                            ->required()
+                            ->live(),
+
+                        // НОВОЕ: ФИО исполнителей
+                        Forms\Components\Textarea::make('executor_names')
+                            ->label('ФИО исполнителей')
+                            ->rows(3)
+                            ->maxLength(1000)
+                            ->placeholder('Для персонализированных: Иванов Иван, Петров Петр...')
+                            ->helperText(function ($get) {
+                                $executorType = $get('executor_type');
+                                if (str_starts_with($executorType, 'contractor_')) {
+                                    return 'Укажите ФИО конкретных исполнителей или оставьте пустым для обезличенного персонала';
+                                }
+                                return 'Укажите ФИО наших исполнителей';
+                            }),
+
                         Forms\Components\TextInput::make('workers_count')
                             ->label('Количество рабочих')
                             ->numeric()
                             ->required()
                             ->minValue(1),
-                            
-                        Forms\Components\TextInput::make('shift_duration')
-                            ->label('Продолжительность смены (часы)')
+
+                        // ПЕРЕИМЕНОВАНО: shift_duration → estimated_shift_duration
+                        Forms\Components\TextInput::make('estimated_shift_duration')
+                            ->label('Ориентировочная продолжительность смены (часы)')
                             ->numeric()
                             ->required()
-                            ->minValue(1),
+                            ->minValue(1)
+                            ->step(0.5),
                     ])->columns(2),
-                    
+
                 Forms\Components\Section::make('Финансовая информация')
                     ->schema([
-                        Forms\Components\TextInput::make('project')
-                            ->label('Проект')
-                            ->maxLength(255),
-                            
-                        Forms\Components\TextInput::make('purpose')
-                            ->label('Назначение')
-                            ->maxLength(255),
-                            
-                        Forms\Components\TextInput::make('payer_company')
+                        Forms\Components\TextInput::make('selected_payer_company')
                             ->label('Компания-плательщик')
                             ->maxLength(255),
+
+                        Forms\Components\Toggle::make('is_custom_payer')
+                            ->label('Ручной выбор плательщика')
+                            ->default(false),
                     ])->columns(2),
-                    
+
                 Forms\Components\Section::make('Дополнительно')
                     ->schema([
-                        Forms\Components\Textarea::make('comments')
-                            ->label('Комментарии')
+                        // ПЕРЕИМЕНОВАНО: comments → additional_info
+                        Forms\Components\Textarea::make('additional_info')
+                            ->label('Дополнительная информация')
                             ->maxLength(65535)
                             ->columnSpanFull(),
-                            
+
                         Forms\Components\Select::make('status')
                             ->label('Статус')
                             ->options([
@@ -141,12 +208,21 @@ class WorkRequestResource extends Resource
                             ])
                             ->required()
                             ->default('draft'),
-                            
+
                         Forms\Components\Select::make('dispatcher_id')
                             ->label('Диспетчер')
                             ->relationship('dispatcher', 'name')
                             ->searchable()
                             ->preload(),
+
+                        // НОВОЕ: Общее кол-во отработанных часов
+                        Forms\Components\TextInput::make('total_worked_hours')
+                            ->label('Общее кол-во отработанных часов')
+                            ->numeric()
+                            ->minValue(0)
+                            ->step(0.1)
+                            ->disabled()
+                            ->default(0),
                     ])->columns(2),
             ]);
     }
@@ -159,43 +235,64 @@ class WorkRequestResource extends Resource
                     ->label('Номер')
                     ->searchable()
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('work_date')
                     ->label('Дата работ')
-                    ->date()
+                    ->date('d.m.Y')
                     ->sortable(),
 
-                    // ДОБАВЬТЕ ЭТУ КОЛОНКУ
                 Tables\Columns\TextColumn::make('start_time')
                     ->label('Время начала')
                     ->time('H:i')
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('initiator.name')
                     ->label('Инициатор')
                     ->searchable()
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('brigadier.name')
                     ->label('Бригадир')
                     ->searchable()
                     ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('specialty.name')
-                    ->label('Специальность')
+
+                // ОБНОВЛЯЕМ: category вместо specialty
+                Tables\Columns\TextColumn::make('category.name')
+                    ->label('Категория')
                     ->searchable()
-                    ->sortable(),
-                    
+                    ->sortable()
+                    ->badge(),
+
                 Tables\Columns\TextColumn::make('executor_type')
                     ->label('Тип')
-                    ->formatStateUsing(fn ($state) => $state === 'our_staff' ? 'Наш' : 'Подрядчик')
+                    ->formatStateUsing(function ($state) {
+                        if ($state === 'our_staff') return 'Наш персонал';
+                        if (str_starts_with($state, 'contractor_')) {
+                            $contractorId = str_replace('contractor_', '', $state);
+                            $contractor = \App\Models\Contractor::find($contractorId);
+                            return $contractor ? "Подрядчик: {$contractor->name}" : 'Подрядчик';
+                        }
+                        return $state;
+                    })
                     ->badge()
                     ->color(fn ($state) => $state === 'our_staff' ? 'success' : 'warning'),
-                    
+
                 Tables\Columns\TextColumn::make('workers_count')
                     ->label('Кол-во')
                     ->sortable(),
-                    
+
+                Tables\Columns\TextColumn::make('estimated_shift_duration')
+                    ->label('Продолжительность')
+                    ->suffix(' ч')
+                    ->sortable(),
+
+                // НОВОЕ: ФИО исполнителей (укороченное)
+                Tables\Columns\TextColumn::make('executor_names')
+                    ->label('Исполнители')
+                    ->limit(30)
+                    ->tooltip(fn ($record) => $record->executor_names)
+                    ->placeholder('Не указаны'),
+
                 Tables\Columns\TextColumn::make('status')
                     ->label('Статус')
                     ->badge()
@@ -207,10 +304,15 @@ class WorkRequestResource extends Resource
                         'completed' => 'primary',
                         default => 'gray',
                     }),
-                    
+
+                Tables\Columns\TextColumn::make('total_worked_hours')
+                    ->label('Отработано часов')
+                    ->suffix(' ч')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создана')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -224,14 +326,13 @@ class WorkRequestResource extends Resource
                         'staffed' => 'Укомплектована',
                         'completed' => 'Завершена',
                     ]),
-                    
-                Tables\Filters\SelectFilter::make('executor_type')
-                    ->label('Тип исполнителя')
-                    ->options([
-                        'our_staff' => 'Наш персонал',
-                        'contractor' => 'Подрядчик',
-                    ]),
-                    
+
+                Tables\Filters\SelectFilter::make('category')
+                    ->label('Категория')
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\Filter::make('work_date')
                     ->label('Дата работ')
                     ->form([
@@ -246,7 +347,6 @@ class WorkRequestResource extends Resource
                             ->when($data['work_date_to'], fn($q, $date) => $q->whereDate('work_date', '<=', $date));
                     }),
             ])
-            // ОБНОВЛЯЕМ ACTIONS С РУССКИМИ НАЗВАНИЯМИ
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
@@ -255,7 +355,6 @@ class WorkRequestResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->label('Удалить'),
             ])
-            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
