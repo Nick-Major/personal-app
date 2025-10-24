@@ -32,14 +32,51 @@ class ShiftResource extends Resource
                             ->relationship('workRequest', 'request_number')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->live(),
 
                         Forms\Components\Select::make('user_id')
                             ->label('Исполнитель')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->live()
+                            ->afterStateUpdated(function ($set, $state) {
+                                // Автоматически определяем налоговый статус при выборе исполнителя
+                                if ($state) {
+                                    $user = \App\Models\User::find($state);
+                                    if ($user && $user->tax_status_id) {
+                                        $set('tax_status_id', $user->tax_status_id);
+                                    }
+                                    if ($user && $user->contract_type_id) {
+                                        $set('contract_type_id', $user->contract_type_id);
+                                    }
+                                }
+                            }),
+
+                        Forms\Components\Select::make('contractor_id')
+                            ->label('Подрядчик')
+                            ->relationship('contractor', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function ($set, $state) {
+                                // Автоматически определяем налоговый статус при выборе подрядчика
+                                if ($state) {
+                                    $contractor = \App\Models\Contractor::find($state);
+                                    if ($contractor && $contractor->tax_status_id) {
+                                        $set('tax_status_id', $contractor->tax_status_id);
+                                    }
+                                    if ($contractor && $contractor->contract_type_id) {
+                                        $set('contract_type_id', $contractor->contract_type_id);
+                                    }
+                                }
+                            }),
+
+                        Forms\Components\TextInput::make('contractor_worker_name')
+                            ->label('Имя рабочего от подрядчика')
+                            ->maxLength(255)
+                            ->visible(fn (callable $get) => $get('contractor_id') && !$get('user_id')),
 
                         Forms\Components\Select::make('role')
                             ->label('Роль в смене')
@@ -55,14 +92,29 @@ class ShiftResource extends Resource
                             ->relationship('specialty', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->live(),
 
                         Forms\Components\Select::make('work_type_id')
-                            ->label('Вид работ')
+                            ->label('Вид работ (для аналитики)')
                             ->relationship('workType', 'name')
                             ->searchable()
+                            ->preload(),
+
+                        // НОВЫЕ ПОЛЯ ДЛЯ НАЛОГОВОЙ СИСТЕМЫ
+                        Forms\Components\Select::make('contract_type_id')
+                            ->label('Тип договора')
+                            ->relationship('contractType', 'name')
+                            ->searchable()
                             ->preload()
-                            ->required(),
+                            ->live(),
+
+                        Forms\Components\Select::make('tax_status_id')
+                            ->label('Налоговый статус')
+                            ->relationship('taxStatus', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live(),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Дата и время')
@@ -91,73 +143,75 @@ class ShiftResource extends Resource
                                 'cancelled' => 'Отменена',
                             ])
                             ->required()
-                            ->default('planned'),
-                    ])->columns(2),
+                            ->default('planned')
+                            ->live(),
 
-                // 🔧 ДОБАВЛЯЕМ НОВУЮ СЕКЦИЮ ДЛЯ РАСЧЕТОВ
-                Forms\Components\Section::make('Настройки расчета')
-                    ->schema([
-                        Forms\Components\Toggle::make('no_lunch')
-                            ->label('Работа без обеда')
-                            ->helperText('+1 дополнительный час к оплате')
-                            ->default(false),
-                            
-                        Forms\Components\Toggle::make('has_transport_fee')
-                            ->label('Транспортная надбавка')
-                            ->helperText('Фиксированная сумма за трансфер')
-                            ->default(false),
-                            
-                        Forms\Components\TextInput::make('base_rate')
-                            ->label('Базовая ставка (руб/час)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->required()
-                            ->default(0)
-                            ->helperText('Ставка специальности + надбавка вида работ'),
-                            
                         Forms\Components\TextInput::make('worked_minutes')
                             ->label('Отработано минут')
                             ->numeric()
                             ->minValue(0)
-                            ->helperText('Автоматически пересчитывается в часы'),
+                            ->helperText('Автоматически пересчитывается в часы')
+                            ->live(),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Результаты расчета')
+                // 🔄 ОБНОВЛЕННАЯ СЕКЦИЯ ДЛЯ РАСЧЕТОВ ПО НОВОЙ ФОРМУЛЕ
+                Forms\Components\Section::make('Расчет оплаты')
                     ->schema([
-                        Forms\Components\Placeholder::make('base_amount')
-                            ->label('Базовая сумма')
-                            ->content(fn ($record) => $record ? number_format($record->base_amount, 0, ',', ' ') . ' ₽' : '0 ₽'),
-                            
-                        Forms\Components\Placeholder::make('no_lunch_bonus')
-                            ->label('Бонус за обед')
-                            ->content(fn ($record) => $record ? number_format($record->no_lunch_bonus, 0, ',', ' ') . ' ₽' : '0 ₽'),
-                            
-                        Forms\Components\Placeholder::make('transport_fee_amount')
-                            ->label('Транспорт')
-                            ->content(fn ($record) => $record ? number_format($record->transport_fee_amount, 0, ',', ' ') . ' ₽' : '0 ₽'),
-                            
-                        Forms\Components\Placeholder::make('expenses_amount')
+                        Forms\Components\Toggle::make('no_lunch')
+                            ->label('Работа без обеда')
+                            ->helperText('Бригадир подтверждает отсутствие обеда')
+                            ->default(false)
+                            ->live(),
+
+                        Forms\Components\TextInput::make('hourly_rate_snapshot')
+                            ->label('Ставка (руб/час)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->helperText('Автоматически определяется по специальности')
+                            ->live(),
+
+                        Forms\Components\Placeholder::make('gross_amount_info')
+                            ->label('Общая сумма на руки')
+                            ->content(function (callable $get) {
+                                $hours = $get('worked_minutes') / 60;
+                                $rate = $get('hourly_rate_snapshot') ?? 0;
+                                $grossAmount = $hours * $rate;
+                                return number_format($grossAmount, 0, ',', ' ') . ' ₽';
+                            })
+                            ->extraAttributes(['class' => 'font-bold text-lg text-green-600']),
+
+                        Forms\Components\Placeholder::make('tax_amount_info')
+                            ->label('Налог')
+                            ->content(function (callable $get) {
+                                $hours = $get('worked_minutes') / 60;
+                                $rate = $get('hourly_rate_snapshot') ?? 0;
+                                $grossAmount = $hours * $rate;
+                                $taxRate = \App\Models\TaxStatus::find($get('tax_status_id'))?->tax_rate ?? 0;
+                                $taxAmount = $grossAmount * $taxRate;
+                                return number_format($taxAmount, 0, ',', ' ') . ' ₽ (' . ($taxRate * 100) . '%)';
+                            })
+                            ->extraAttributes(['class' => 'text-red-600']),
+
+                        Forms\Components\Placeholder::make('net_amount_info')
+                            ->label('Сумма к оплате (после налога)')
+                            ->content(function (callable $get) {
+                                $hours = $get('worked_minutes') / 60;
+                                $rate = $get('hourly_rate_snapshot') ?? 0;
+                                $grossAmount = $hours * $rate;
+                                $taxRate = \App\Models\TaxStatus::find($get('tax_status_id'))?->tax_rate ?? 0;
+                                $netAmount = $grossAmount * (1 - $taxRate);
+                                return number_format($netAmount, 0, ',', ' ') . ' ₽';
+                            })
+                            ->extraAttributes(['class' => 'font-bold text-lg text-blue-600']),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Операционные расходы')
+                    ->schema([
+                        Forms\Components\Placeholder::make('expenses_info')
                             ->label('Операционные расходы')
-                            ->content(fn ($record) => $record ? number_format($record->expenses_amount, 0, ',', ' ') . ' ₽' : '0 ₽'),
-                            
-                        Forms\Components\Placeholder::make('calculated_total')
-                            ->label('ИТОГО к выплате')
-                            ->content(fn ($record) => $record ? number_format($record->calculated_total, 0, ',', ' ') . ' ₽' : '0 ₽')
-                            ->extraAttributes(['class' => 'font-bold text-lg']),
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Подрядчик (если применимо)')
-                    ->schema([
-                        Forms\Components\Select::make('contractor_id')
-                            ->label('Подрядчик')
-                            ->relationship('contractor', 'name')
-                            ->searchable()
-                            ->preload(),
-
-                        Forms\Components\TextInput::make('contractor_worker_name')
-                            ->label('Имя рабочего от подрядчика')
-                            ->maxLength(255),
-                    ])->columns(2),
+                            ->content(fn ($record) => $record ? number_format($record->expenses_amount, 0, ',', ' ') . ' ₽' : '0 ₽')
+                            ->helperText('Такси, транспортные расходы, инвентарь (подтверждает инициатор/диспетчер)'),
+                    ]),
 
                 Forms\Components\Section::make('Дополнительно')
                     ->schema([
@@ -165,6 +219,11 @@ class ShiftResource extends Resource
                             ->label('Заметки')
                             ->maxLength(65535)
                             ->columnSpanFull(),
+
+                        Forms\Components\Toggle::make('is_paid')
+                            ->label('Оплачено')
+                            ->default(false)
+                            ->helperText('Отметьте, когда смена оплачена'),
                     ]),
             ]);
     }
@@ -175,19 +234,21 @@ class ShiftResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('work_date')
                     ->label('Дата')
-                    ->date()
+                    ->date('d.m.Y')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Исполнитель')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder(fn ($record) => $record->contractor_worker_name ?: '—'),
 
-                Tables\Columns\TextColumn::make('role')
-                    ->label('Роль')
-                    ->formatStateUsing(fn ($state) => $state === 'brigadier' ? 'Бригадир' : 'Исполнитель')
-                    ->badge()
-                    ->color(fn ($state) => $state === 'brigadier' ? 'warning' : 'gray'),
+                Tables\Columns\TextColumn::make('contractor.name')
+                    ->label('Подрядчик')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable()
+                    ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('workRequest.request_number')
                     ->label('Заявка')
@@ -199,22 +260,46 @@ class ShiftResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                // 🔧 ДОБАВЛЯЕМ НОВЫЕ КОЛОНКИ
-                Tables\Columns\IconColumn::make('no_lunch')
-                    ->label('Без обеда')
+                Tables\Columns\TextColumn::make('contractType.name')
+                    ->label('Тип договора')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('taxStatus.name')
+                    ->label('Налог')
+                    ->badge()
+                    ->formatStateUsing(fn ($state, $record) => $state ? ($record->taxStatus?->tax_rate * 100) . '%' : '—')
+                    ->color(fn ($state) => $state ? 'primary' : 'gray')
+                    ->toggleable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('worked_minutes')
+                    ->label('Часы')
+                    ->formatStateUsing(fn ($state) => $state ? round($state / 60, 1) . ' ч' : '-')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('gross_amount')
+                    ->label('На руки')
+                    ->money('RUB')
+                    ->sortable()
+                    ->color('success')
+                    ->weight('medium'),
+
+                Tables\Columns\TextColumn::make('amount_to_pay')
+                    ->label('К оплате')
+                    ->money('RUB')
+                    ->sortable()
+                    ->color('blue')
+                    ->weight('medium'),
+
+                Tables\Columns\IconColumn::make('is_paid')
+                    ->label('Оплата')
                     ->boolean()
-                    ->trueIcon('heroicon-o-check-badge')
-                    ->falseIcon('heroicon-o-x-circle')
                     ->trueColor('success')
-                    ->falseColor('gray'),
-                    
-                Tables\Columns\IconColumn::make('has_transport_fee')
-                    ->label('Транспорт')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-truck')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('warning')
-                    ->falseColor('gray'),
+                    ->falseColor('gray')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Статус')
@@ -226,29 +311,28 @@ class ShiftResource extends Resource
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
-
-                Tables\Columns\TextColumn::make('calculated_total')
-                    ->label('Сумма')
-                    ->money('RUB')
-                    ->sortable()
-                    ->color('success')
-                    ->weight('medium'),
-
-                Tables\Columns\TextColumn::make('start_time')
-                    ->label('Начало')
-                    ->time(),
-
-                Tables\Columns\TextColumn::make('end_time')
-                    ->label('Окончание')
-                    ->time(),
-
-                Tables\Columns\TextColumn::make('worked_minutes')
-                    ->label('Минуты')
-                    ->formatStateUsing(fn ($state) => $state ? "{$state} мин" : '-')
-                    ->sortable(),
             ])
             ->filters([
-                // ... существующие фильтры остаются без изменений ...
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Статус')
+                    ->options([
+                        'planned' => 'Запланирована',
+                        'active' => 'Активна',
+                        'completed' => 'Завершена',
+                        'cancelled' => 'Отменена',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('contract_type')
+                    ->label('Тип договора')
+                    ->relationship('contractType', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\TernaryFilter::make('is_paid')
+                    ->label('Оплата')
+                    ->placeholder('Все смены')
+                    ->trueLabel('Только оплаченные')
+                    ->falseLabel('Только неоплаченные'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

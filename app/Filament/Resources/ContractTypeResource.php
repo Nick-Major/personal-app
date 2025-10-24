@@ -2,25 +2,25 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CategoryResource\Pages;
-use App\Models\Category;
+use App\Filament\Resources\ContractTypeResource\Pages;
+use App\Models\ContractType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class CategoryResource extends Resource
+class ContractTypeResource extends Resource
 {
-    protected static ?string $model = Category::class;
+    protected static ?string $model = ContractType::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Справочники';
-    protected static ?string $navigationLabel = 'Категории специалистов';
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationLabel = 'Типы договоров';
+    protected static ?int $navigationSort = 4;
 
-    protected static ?string $modelLabel = 'категория';
-    protected static ?string $pluralModelLabel = 'Категории';
+    protected static ?string $modelLabel = 'тип договора';
+    protected static ?string $pluralModelLabel = 'Типы договоров';
 
     public static function form(Form $form): Form
     {
@@ -29,23 +29,30 @@ class CategoryResource extends Resource
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
                         Forms\Components\TextInput::make('name')
-                            ->label('Название категории')
+                            ->label('Название')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('Например: Садовники, Строители...'),
+                            ->placeholder('Самозанятый, ГПХ, ИП...'),
+                            
+                        Forms\Components\TextInput::make('code')
+                            ->label('Код')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('self_employed, gph, ip...'),
                             
                         Forms\Components\Textarea::make('description')
                             ->label('Описание')
                             ->rows(3)
                             ->maxLength(65535)
-                            ->placeholder('Описание категории...')
+                            ->placeholder('Описание типа договора...')
                             ->columnSpanFull(),
                             
                         Forms\Components\Toggle::make('is_active')
-                            ->label('Активная категория')
+                            ->label('Активный')
                             ->default(true)
-                            ->helperText('Неактивные категории не будут показываться при выборе'),
-                    ]),
+                            ->helperText('Неактивные типы не будут доступны для выбора'),
+                    ])->columns(2),
             ]);
     }
 
@@ -59,18 +66,32 @@ class CategoryResource extends Resource
                     ->sortable()
                     ->weight('medium'),
                     
+                Tables\Columns\TextColumn::make('code')
+                    ->label('Код')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('gray'),
+                    
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
                     ->limit(50)
                     ->searchable()
                     ->placeholder('—'),
                     
-                Tables\Columns\TextColumn::make('specialties_count')
-                    ->label('Специальностей')
-                    ->counts('specialties')
+                Tables\Columns\TextColumn::make('tax_statuses_count')
+                    ->label('Налоговых статусов')
+                    ->counts('taxStatuses')
                     ->sortable()
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
+                    
+                Tables\Columns\TextColumn::make('users_count')
+                    ->label('Пользователей')
+                    ->counts('users')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'primary' : 'gray'),
                     
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
@@ -80,7 +101,7 @@ class CategoryResource extends Resource
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создана')
+                    ->label('Создан')
                     ->dateTime('d.m.Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -88,7 +109,7 @@ class CategoryResource extends Resource
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Активные')
-                    ->placeholder('Все категории')
+                    ->placeholder('Все типы')
                     ->trueLabel('Только активные')
                     ->falseLabel('Только неактивные'),
             ])
@@ -96,11 +117,11 @@ class CategoryResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
                     
-                Tables\Actions\Action::make('view_specialties')
-                    ->label('Специальности')
-                    ->icon('heroicon-o-academic-cap')
-                    ->url(fn (Category $record) => SpecialtyResource::getUrl('index', [
-                        'tableFilters[category][values]' => [$record->id]
+                Tables\Actions\Action::make('tax_statuses')
+                    ->label('Налоговые статусы')
+                    ->icon('heroicon-o-calculator')
+                    ->url(fn (ContractType $record) => TaxStatusResource::getUrl('index', [
+                        'tableFilters[contract_type][values]' => [$record->id]
                     ]))
                     ->color('gray'),
                     
@@ -113,11 +134,11 @@ class CategoryResource extends Resource
                         ->label('Удалить выбранные'),
                 ]),
             ])
-            ->emptyStateHeading('Нет категорий')
-            ->emptyStateDescription('Создайте первую категорию.')
+            ->emptyStateHeading('Нет типов договоров')
+            ->emptyStateDescription('Создайте первый тип договора.')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Создать категорию'),
+                    ->label('Создать тип договора'),
             ])
             ->defaultSort('name', 'asc');
     }
@@ -125,16 +146,16 @@ class CategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // RelationManagers\SpecialtiesRelationManager::class,
+            // RelationManagers\TaxStatusesRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCategories::route('/'),
-            'create' => Pages\CreateCategory::route('/create'),
-            'edit' => Pages\EditCategory::route('/{record}/edit'),
+            'index' => Pages\ListContractTypes::route('/'),
+            'create' => Pages\CreateContractType::route('/create'),
+            'edit' => Pages\EditContractType::route('/{record}/edit'),
         ];
     }
 }

@@ -17,6 +17,8 @@ class Contractor extends Model
         'phone',                   // Основной телефон компании
         'email',                   // Основной email компании
         'user_id',                 // User-представитель компании
+        'contract_type_id',        // ДОБАВИТЬ
+        'tax_status_id',           // ДОБАВИТЬ
         'address',                 // Адрес компании
         'inn',                     // ИНН
         'bank_details',           // Банковские реквизиты
@@ -72,6 +74,17 @@ class Contractor extends Model
     public function contractorRates()
     {
         return $this->hasMany(ContractorRate::class);
+    }
+
+    // В модель Contractor добавляем:
+    public function contractType()
+    {
+        return $this->belongsTo(ContractType::class);
+    }
+
+    public function taxStatus()
+    {
+        return $this->belongsTo(TaxStatus::class);
     }
 
     // === МЕТОДЫ ===

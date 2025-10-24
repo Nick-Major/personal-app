@@ -145,6 +145,41 @@ class UserResource extends Resource
                             ->validationMessages([
                                 'required' => 'Для исполнителя подрядчика необходимо выбрать компанию',
                             ]),
+
+                        // НОВЫЕ ПОЛЯ ДЛЯ НАЛОГОВОЙ СИСТЕМЫ
+                        Forms\Components\Select::make('contract_type_id')
+                            ->label('Тип договора')
+                            ->relationship('contractType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function ($set, $state) {
+                                // Сбрасываем налоговый статус при смене типа договора
+                                $set('tax_status_id', null);
+                            })
+                            ->helperText('Форма договора с исполнителем')
+                            ->visible(fn (callable $get): bool =>
+                                collect($get('roles') ?? [])->contains('executor') &&
+                                $get('executor_type') === 'our'
+                            ),
+
+                        Forms\Components\Select::make('tax_status_id')
+                            ->label('Налоговый статус')
+                            ->relationship(
+                                name: 'taxStatus',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn ($query, callable $get) => 
+                                    $query->where('contract_type_id', $get('contract_type_id'))
+                                          ->where('is_active', true)
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Налоговый режим для расчетов')
+                            ->visible(fn (callable $get): bool =>
+                                collect($get('roles') ?? [])->contains('executor') &&
+                                $get('executor_type') === 'our' &&
+                                $get('contract_type_id')
+                            ),    
                             
                         Forms\Components\BelongsToManyCheckboxList::make('specialties')
                             ->label('Специальности')
@@ -235,6 +270,25 @@ class UserResource extends Resource
                     ->separator(', ')
                     ->limitList(2)
                     ->toggleable(),
+
+                Tables\Columns\TextColumn::make('contractType.name')
+                    ->label('Тип договора')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('taxStatus.name')
+                    ->label('Налоговый статус')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->formatStateUsing(fn ($state, $record) => $state ? "{$state} (" . ($record->taxStatus?->tax_rate * 100) . "%)" : '—')
+                    ->color(fn ($state) => $state ? 'primary' : 'gray')
+                    ->toggleable()
+                    ->placeholder('—'),
                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -255,32 +309,43 @@ class UserResource extends Resource
                     ->relationship('contractor', 'name')
                     ->searchable()
                     ->preload(),
-                    
-                // ОБНОВЛЯЕМ ФИЛЬТРЫ ДЛЯ ЧЕТКОГО РАЗДЕЛЕНИЯ
+
                 Tables\Filters\Filter::make('our_executors')
                     ->label('👷 Наши исполнители')
                     ->query(fn ($query) => $query->ourExecutors()),
-                    
+
                 Tables\Filters\Filter::make('contractor_executors')
                     ->label('🏢 Исполнители подрядчиков')
                     ->query(fn ($query) => $query->contractorExecutors()),
-                    
+
                 Tables\Filters\Filter::make('external_contractors')
                     ->label('👑 Подрядчики')
                     ->query(fn ($query) => $query->externalContractors()),
-                    
+
                 Tables\Filters\Filter::make('initiators')
                     ->label('📋 Инициаторы')
                     ->query(fn ($query) => $query->role('initiator')),
-                    
+
                 Tables\Filters\Filter::make('dispatchers')
                     ->label('📞 Диспетчеры')
                     ->query(fn ($query) => $query->role('dispatcher')),
-                    
+
                 Tables\Filters\SelectFilter::make('specialties')
                     ->label('Специальность')
                     ->relationship('specialties', 'name')
                     ->multiple()
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('contract_type')
+                    ->label('Тип договора')
+                    ->relationship('contractType', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('tax_status')
+                    ->label('Налоговый статус')
+                    ->relationship('taxStatus', 'name')
                     ->searchable()
                     ->preload(),
             ])

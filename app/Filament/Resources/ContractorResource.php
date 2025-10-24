@@ -96,6 +96,41 @@ class ContractorResource extends Resource
                             ->maxLength(65535)
                             ->placeholder('Банк: ПАО "Сбербанк"\nРасчетный счет: 40702810123456789012\nКорр. счет: 30101234567890123456\nБИК: 044525225'),
                     ])->columns(1),
+
+                // НОВАЯ СЕКЦИЯ ДЛЯ НАЛОГОВОЙ СИСТЕМЫ
+                Forms\Components\Section::make('Налоговая информация')
+                    ->schema([
+                        Forms\Components\Select::make('contract_type_id')
+                            ->label('Тип договора компании')
+                            ->relationship('contractType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function ($set, $state) {
+                                // Сбрасываем налоговый статус при смене типа договора
+                                $set('tax_status_id', null);
+                            })
+                            ->helperText('Организационно-правовая форма компании'),
+
+                        Forms\Components\Select::make('tax_status_id')
+                            ->label('Налоговый статус компании')
+                            ->relationship(
+                                name: 'taxStatus',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn ($query, callable $get) => 
+                                    $query->where('contract_type_id', $get('contract_type_id'))
+                                          ->where('is_active', true)
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Основной налоговый режим компании')
+                            ->visible(fn (callable $get): bool => (bool) $get('contract_type_id')),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Специализации и настройки')
+                    ->schema([
+                        // ... существующие поля ...
+                    ])->columns(1),    
                     
                 Forms\Components\Section::make('Специализации и настройки')
                     ->schema([
@@ -144,6 +179,25 @@ class ContractorResource extends Resource
                     ->label('Email')
                     ->searchable()
                     ->toggleable(),
+
+                Tables\Columns\TextColumn::make('contractType.name')
+                    ->label('Тип договора')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('primary')
+                    ->toggleable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('taxStatus.name')
+                    ->label('Налоговый статус')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->formatStateUsing(fn ($state, $record) => $state ? "{$state} (" . ($record->taxStatus?->tax_rate * 100) . "%)" : '—')
+                    ->color(fn ($state) => $state ? 'success' : 'gray')
+                    ->toggleable()
+                    ->placeholder('—'),    
                     
                 Tables\Columns\TextColumn::make('executors_count')
                     ->label('Исполнителей')

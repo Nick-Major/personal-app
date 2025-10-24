@@ -21,6 +21,8 @@ class User extends Authenticatable
         'phone',
         'telegram_id',
         'contractor_id',
+        'contract_type_id', // ДОБАВИТЬ
+        'tax_status_id',    // ДОБАВИТЬ
         'notes',
     ];
 
@@ -198,6 +200,17 @@ class User extends Authenticatable
         return $this->hasMany(Rate::class);
     }
 
+    // В модель User добавляем:
+    public function contractType()
+    {
+        return $this->belongsTo(ContractType::class);
+    }
+
+    public function taxStatus()
+    {
+        return $this->belongsTo(TaxStatus::class);
+    }
+
     // === SCOPES ===
     public function scopeBrigadiers($query)
     {
@@ -335,33 +348,35 @@ class User extends Authenticatable
         });
     }
 
-    /**
-     * Получить информацию о типе исполнителя для отображения
-     */
+    // Обновляем метод getExecutorTypeInfo
     public function getExecutorTypeInfo(): array
     {
         if (!$this->hasRole('executor')) {
             return ['type' => 'not_executor', 'label' => 'Не исполнитель'];
         }
-        
+
         if ($this->isOurExecutor()) {
             return [
                 'type' => 'our',
                 'label' => '👷 Наш исполнитель',
                 'description' => 'Сотрудник компании',
-                'contractor' => null
+                'contractor' => null,
+                'contract_type' => $this->contractType?->name,
+                'tax_status' => $this->taxStatus?->name
             ];
         }
-        
+
         if ($this->isContractorExecutor()) {
             return [
                 'type' => 'contractor',
                 'label' => '🏢 Исполнитель подрядчика',
                 'description' => 'Внешний специалист',
-                'contractor' => $this->contractor
+                'contractor' => $this->contractor,
+                'contract_type' => $this->contractor?->contractType?->name,
+                'tax_status' => $this->contractor?->taxStatus?->name
             ];
         }
-        
+
         return ['type' => 'unknown', 'label' => 'Неизвестный тип'];
     }
 
