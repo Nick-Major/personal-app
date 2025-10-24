@@ -10,29 +10,29 @@ class WorkRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_number',
-        'project_id',
-        'purpose_id', 
-        'address_id',
-        'selected_payer_company',
-        'initiator_id',
-        'brigadier_id',
+        'request_number', // Номер заявки
+        'project_id', // Проект
+        'purpose_id', // Назначение
+        'address_id', // Адрес
+        'selected_payer_company', // Проанализировать зачем нужна?
+        'initiator_id', // Инициатор
+        'brigadier_id', // Создать валидацию
         'category_id', // ИЗМЕНЕНО: было specialty_id
-        'work_type_id',
-        'executor_type',
+        'work_type_id', // Вид работ
+        'executor_type', // Понять нужен ли?
         'executor_names', // НОВОЕ: ФИО исполнителей
         'total_worked_hours', // НОВОЕ: общее кол-во отработанных часов
-        'workers_count',
+        'workers_count', // Количество исполнителей по заявке
         'estimated_shift_duration', // ИЗМЕНЕНО: было shift_duration
-        'work_date',
-        'start_time',
-        'is_custom_payer',
+        'work_date', // Дата работ по заявке
+        'start_time', // Время начала работы
+        'is_custom_payer',// Понять зачем нужно?
         'additional_info', // ИЗМЕНЕНО: было comments
-        'status',
-        'dispatcher_id',
-        'published_at',
-        'staffed_at',
-        'completed_at',
+        'status', // Статус заявки
+        'dispatcher_id', // Ответственный диспетчер
+        'published_at', // Дата и время публикации заявки
+        'staffed_at', // Дата и время завершения комплектования заявки
+        'completed_at', // Дата и время окончания заявки
     ];
 
     protected $casts = [

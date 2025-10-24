@@ -10,29 +10,29 @@ class Shift extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_id',
-        'user_id',
-        'contractor_id',
-        'contractor_worker_name',
-        'work_date',
-        'start_time',
-        'end_time',
-        'status',
-        'role',
-        'shift_started_at',
-        'shift_ended_at',
-        'notes',
-        'worked_minutes',
-        'lunch_minutes',
-        'travel_expense_amount',
-        'specialty_id',
-        'work_type_id',
-        'tax_status_id',        // ДОБАВЛЕНО
-        'contract_type_id',     // ДОБАВЛЕНО
-        'hourly_rate_snapshot',
+        'request_id', // Номер заявки
+        'user_id', // ID пользователя
+        'contractor_id', // ID подрядчика
+        'contractor_worker_name', // Кто это???
+        'work_date', // Дата смены
+        'start_time', // Время начала смены
+        'end_time', // Время окончания смены
+        'status', // Статус смены
+        'role', // Роль в смене: Исполнитель или бригадир
+        'shift_started_at', // Время начала смены - дубль с start_time?
+        'shift_ended_at', // Время окончания смены - дубль с end_time?
+        'notes', // Заметки
+        'worked_minutes', // Рабочие часы
+        'lunch_minutes', // время обеда - зачем???
+        'travel_expense_amount', // Сумма транспортных расходов - зачем???
+        'specialty_id', // Специальность
+        'work_type_id', // Тип работ
+        'tax_status_id', // Налоговый режим
+        'contract_type_id',     // Тип договора
+        'hourly_rate_snapshot', // Что это???
         'gross_amount',         // переименовать в gross_amount
-        'expenses_total',
-        'grand_total',
+        'expenses_total', // Общая сумма расходов?
+        'grand_total', // Что это?
         'is_paid',              // ДОБАВЛЕНО
         'amount_to_pay',        // ДОБАВЛЕНО
     ];
