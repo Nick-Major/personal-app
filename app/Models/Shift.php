@@ -10,40 +10,43 @@ class Shift extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_id', // Номер заявки
-        'user_id', // ID пользователя
-        'contractor_id', // ID подрядчика
-        'contractor_worker_name', // Кто это???
-        'work_date', // Дата смены
-        'start_time', // Время начала смены
-        'end_time', // Время окончания смены
-        'status', // Статус смены
-        'role', // Роль в смене: Исполнитель или бригадир
-        'shift_started_at', // Время начала смены - дубль с start_time?
-        'shift_ended_at', // Время окончания смены - дубль с end_time?
-        'notes', // Заметки
-        'worked_minutes', // Рабочие часы
-        'lunch_minutes', // время обеда - зачем???
-        'travel_expense_amount', // Сумма транспортных расходов - зачем???
-        'specialty_id', // Специальность
-        'work_type_id', // Тип работ
-        'tax_status_id', // Налоговый режим
-        'contract_type_id',     // Тип договора
-        'hourly_rate_snapshot', // Что это???
-        'gross_amount',         // переименовать в gross_amount
-        'expenses_total', // Общая сумма расходов?
-        'grand_total', // Что это?
-        'is_paid',              // ДОБАВЛЕНО
-        'amount_to_pay',        // ДОБАВЛЕНО
+        'request_id',
+        'user_id', 
+        'contractor_id',
+        'work_date',
+        'month_period',
+        'start_time',
+        'end_time', 
+        'status', // ['scheduled', 'active', 'pending_approval', 'completed', 'paid', 'cancelled']
+        'role',
+        'notes',
+        'worked_minutes',
+        'specialty_id',
+        'work_type_id',
+        'address_id',
+        'tax_status_id',
+        'contract_type_id',
+        'base_rate',
+        'hand_amount',      // Сумма НА РУКИ (до налога)
+        'payout_amount',    // Сумма К ВЫПЛАТЕ (с налогом)
+        'tax_amount',       // Сумма налога
+        'is_paid',
+        'expenses_total',
+        'compensation_amount',
+        'compensation_description'
     ];
 
     protected $casts = [
         'work_date' => 'date',
         'start_time' => 'datetime:H:i:s',
         'end_time' => 'datetime:H:i:s',
-        'shift_started_at' => 'datetime',
-        'shift_ended_at' => 'datetime',
         'is_paid' => 'boolean',
+        'compensation_amount' => 'decimal:2',
+        'base_rate' => 'decimal:2',
+        'hand_amount' => 'decimal:2',
+        'payout_amount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'expenses_total' => 'decimal:2',
     ];
 
     // === СВЯЗИ ===
@@ -70,6 +73,11 @@ class Shift extends Model
     public function workType()
     {
         return $this->belongsTo(WorkType::class);
+    }
+
+    public function address()
+    {
+        return $this->belongsTo(Address::class);
     }
 
     public function taxStatus()
@@ -123,6 +131,16 @@ class Shift extends Model
         return $query->where('role', 'brigadier');
     }
 
+    public function scopePendingApproval($query)
+    {
+        return $query->where('status', 'pending_approval');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
     public function scopePaid($query)
     {
         return $query->where('is_paid', true);
@@ -133,25 +151,12 @@ class Shift extends Model
         return $query->where('is_paid', false);
     }
 
-    // === МЕТОДЫ ===
-    public function isBrigadier()
-    {
-        return $this->role === 'brigadier';
-    }
-
-    public function calculateTotalTime()
-    {
-        $totalMinutes = $this->visitedLocations->sum('duration_minutes');
-        $this->update(['worked_minutes' => $totalMinutes]);
-        return $totalMinutes;
-    }
-
-    // === НОВАЯ ФОРМУЛА РАСЧЕТОВ ===
+    // === МЕТОДЫ РАСЧЕТОВ ===
 
     /**
-     * Определить часовую ставку для смены
+     * Определить базовую ставку для смены
      */
-    public function determineHourlyRate()
+    public function determineBaseRate()
     {
         // 1. Если это наш исполнитель - берем ставку из user_specialties
         if ($this->user_id && $this->specialty_id) {
@@ -159,9 +164,7 @@ class Shift extends Model
                 ->where('specialty_id', $this->specialty_id)
                 ->first();
             
-            if ($userSpecialty) {
-                return $userSpecialty->pivot->base_hourly_rate ?? $userSpecialty->base_hourly_rate;
-            }
+            return $userSpecialty->pivot->base_hourly_rate ?? $userSpecialty->base_hourly_rate ?? 0;
         }
         
         // 2. Если это персонализированный исполнитель подрядчика
@@ -175,76 +178,44 @@ class Shift extends Model
             return $contractorRate?->hourly_rate ?? 0;
         }
         
-        // 3. Если это обезличенный персонал подрядчика
-        if ($this->contractor_id && !$this->user_id && $this->specialty_id) {
-            $contractorRate = ContractorRate::where('contractor_id', $this->contractor_id)
-                ->where('specialty_id', $this->specialty_id)
-                ->where('is_anonymous', true)
-                ->where('is_active', true)
-                ->first();
-                
-            return $contractorRate?->hourly_rate ?? 0;
-        }
-        
         return 0;
     }
 
     /**
-     * Общая сумма на руки (до вычета налогов)
+     * Рассчитать сумму НА РУКИ (до налога)
+     * Формула: (Базовая_ставка × Часы) + Компенсация + Операционные_расходы
      */
-    public function getGrossAmountAttribute()
+    public function calculateHandAmount()
     {
         $hours = $this->worked_minutes / 60;
-        $rate = $this->hourly_rate_snapshot ?: $this->determineHourlyRate();
-        
-        return $hours * $rate;
-    }
-
-    /**
-     * Сумма налога
-     */
-    public function getTaxAmountAttribute()
-    {
-        $grossAmount = $this->gross_amount;
-        $taxRate = $this->taxStatus?->tax_rate ?? 0;
-        
-        return $grossAmount * $taxRate;
-    }
-
-    /**
-     * Сумма к оплате (после вычета налогов)
-     */
-    public function getAmountToPayAttribute()
-    {
-        $grossAmount = $this->gross_amount;
-        $taxAmount = $this->tax_amount;
+        $baseRate = $this->base_rate ?: $this->determineBaseRate();
+        $baseAmount = $baseRate * $hours;
+        $compensation = $this->compensation_amount ?? 0;
         $expenses = $this->shiftExpenses->sum('amount');
         
-        return ($grossAmount - $taxAmount) + $expenses;
+        return $baseAmount + $compensation + $expenses;
     }
 
     /**
-     * Сумма операционных расходов
+     * Рассчитать сумму налога
      */
-    public function getExpensesAmountAttribute()
+    public function calculateTaxAmount()
     {
-        return $this->shiftExpenses->sum('amount');
+        $handAmount = $this->hand_amount ?: $this->calculateHandAmount();
+        $taxRate = $this->taxStatus?->tax_rate ?? 0;
+        
+        return $handAmount * $taxRate;
     }
 
     /**
-     * Месяц смены (для отчетности)
+     * Рассчитать сумму К ВЫПЛАТЕ (с налогом)
      */
-    public function getMonthAttribute()
+    public function calculatePayoutAmount()
     {
-        return $this->work_date->format('Y-m');
-    }
-
-    /**
-     * Компания-плательщик (из заявки)
-     */
-    public function getPayerCompanyAttribute()
-    {
-        return $this->workRequest?->determinePayer();
+        $handAmount = $this->hand_amount ?: $this->calculateHandAmount();
+        $taxAmount = $this->calculateTaxAmount();
+        
+        return $handAmount + $taxAmount;
     }
 
     /**
@@ -252,25 +223,106 @@ class Shift extends Model
      */
     public function updateCalculations()
     {
-        // Определяем ставку если не установлена
-        if (!$this->hourly_rate_snapshot) {
-            $this->hourly_rate_snapshot = $this->determineHourlyRate();
+        // Устанавливаем базовую ставку если не установлена
+        if (!$this->base_rate) {
+            $this->base_rate = $this->determineBaseRate();
         }
-        
-        // Определяем налоговый статус если не установлен
+
+        // Устанавливаем month_period если не установлен
+        if (!$this->month_period) {
+            $this->month_period = $this->work_date->format('Y-m');
+        }
+
+        // Автоматически определяем tax_status и contract_type если не установлены
         if (!$this->tax_status_id) {
             $this->updateTaxStatus();
         }
         
-        // Определяем тип договора если не установлен
         if (!$this->contract_type_id) {
             $this->updateContractType();
         }
+
+        // Обновляем суммы по новой логике
+        $this->hand_amount = $this->calculateHandAmount();     // НА РУКИ
+        $this->tax_amount = $this->calculateTaxAmount();       // Налог
+        $this->payout_amount = $this->calculatePayoutAmount(); // К ВЫПЛАТЕ
+        $this->expenses_total = $this->shiftExpenses->sum('amount');
         
-        // Сохраняем обновленные данные
         $this->save();
         
         return $this;
+    }
+
+    // === WORKFLOW МЕТОДЫ ===
+    public function startShift()
+    {
+        $this->update([
+            'status' => 'active',
+            'start_time' => now()
+        ]);
+    }
+
+    public function endShift()
+    {
+        $this->update([
+            'status' => 'pending_approval',
+            'end_time' => now()
+        ]);
+    }
+
+    public function submitForApproval()
+    {
+        $this->update(['status' => 'pending_approval']);
+    }
+
+    public function approve()
+    {
+        $this->update(['status' => 'completed']);
+        $this->updateCalculations();
+    }
+
+    public function markAsPaid()
+    {
+        $this->update([
+            'status' => 'paid',
+            'is_paid' => true
+        ]);
+    }
+
+    // === СТАТУСНЫЕ МЕТОДЫ ===
+    public function isActive()
+    {
+        return $this->status === 'active';
+    }
+
+    public function isPendingApproval()
+    {
+        return $this->status === 'pending_approval';
+    }
+
+    public function isCompleted()
+    {
+        return $this->status === 'completed';
+    }
+
+    public function isPaid()
+    {
+        return $this->status === 'paid';
+    }
+
+    public function isBrigadier()
+    {
+        return $this->role === 'brigadier';
+    }
+
+    /**
+     * Рассчитать общее время из посещенных локаций
+     */
+    public function calculateTotalTime()
+    {
+        $totalMinutes = $this->visitedLocations->sum('duration_minutes');
+        $this->update(['worked_minutes' => $totalMinutes]);
+        return $totalMinutes;
     }
 
     /**
@@ -278,22 +330,18 @@ class Shift extends Model
      */
     public function determineTaxStatus()
     {
-        // Если уже установлен - используем его
         if ($this->tax_status_id) {
             return $this->taxStatus;
         }
 
-        // 1. Если это наш исполнитель - берем его налоговый статус
         if ($this->user_id && $this->user->tax_status_id) {
             return $this->user->taxStatus;
         }
         
-        // 2. Если это персонализированный исполнитель подрядчика
         if ($this->user_id && $this->user->contractor_id && $this->user->contractor->tax_status_id) {
             return $this->user->contractor->taxStatus;
         }
         
-        // 3. Если это обезличенный персонал подрядчика
         if ($this->contractor_id && !$this->user_id && $this->contractor->tax_status_id) {
             return $this->contractor->taxStatus;
         }
@@ -318,22 +366,18 @@ class Shift extends Model
      */
     public function determineContractType()
     {
-        // Если уже установлен - используем его
         if ($this->contract_type_id) {
             return $this->contractType;
         }
 
-        // 1. Если это наш исполнитель - берем его тип договора
         if ($this->user_id && $this->user->contract_type_id) {
             return $this->user->contractType;
         }
         
-        // 2. Если это персонализированный исполнитель подрядчика
         if ($this->user_id && $this->user->contractor_id && $this->user->contractor->contract_type_id) {
             return $this->user->contractor->contractType;
         }
         
-        // 3. Если это обезличенный персонал подрядчика
         if ($this->contractor_id && !$this->user_id && $this->contractor->contract_type_id) {
             return $this->contractor->contractType;
         }
@@ -353,4 +397,3 @@ class Shift extends Model
         return $contractType;
     }
 }
-
