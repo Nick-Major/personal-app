@@ -11,6 +11,7 @@ class Category extends Model
 
     protected $fillable = [
         'name',
+        'prefix',
         'description', 
         'is_active'
     ];
@@ -58,5 +59,11 @@ class Category extends Model
                 $q->where('category_id', $this->id);
             })->where('is_active', true);
         })->get();
+    }
+
+    // Добавим метод для генерации номера заявки
+    public function generateRequestNumber($requestId)
+    {
+        return $this->prefix . '-' . $requestId . '/' . now()->year;
     }
 }

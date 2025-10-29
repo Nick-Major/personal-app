@@ -1,1 +1,1 @@
-import './bootstrap';
+// Laravel app

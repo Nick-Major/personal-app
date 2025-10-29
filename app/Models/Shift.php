@@ -95,11 +95,6 @@ class Shift extends Model
         return $this->hasMany(ShiftExpense::class);
     }
 
-    public function segments()
-    {
-        return $this->hasMany(ShiftSegment::class);
-    }
-
     public function visitedLocations()
     {
         return $this->hasMany(VisitedLocation::class);

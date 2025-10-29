@@ -1,0 +1,51 @@
+
+  App\Models\Shift ...........................................................  
+  Database ............................................................. mysql  
+  Table ............................................................... shifts  
+
+  Attributes ..................................................... type / cast  
+  id increments, unique ................................ bigint unsigned / int  
+  request_id fillable ........................................ bigint unsigned  
+  user_id nullable, fillable ................................. bigint unsigned  
+  contractor_id nullable, fillable ........................... bigint unsigned  
+  role fillable ................................. enum('executor','brigadier')  
+  work_date fillable ............................................. date / date  
+  month_period nullable, fillable ................................. varchar(7)  
+  start_time nullable, fillable ........................ time / datetime:H:i:s  
+  end_time nullable, fillable .......................... time / datetime:H:i:s  
+  status fillable  enum('scheduled','active','pending_approval','completed','paid','cancelled')  
+  notes nullable, fillable .............................................. text  
+  worked_minutes fillable ....................................... int unsigned  
+  compensation_amount fillable ..................... decimal(10,2) / decimal:2  
+  compensation_description nullable, fillable ........................... text  
+  created_at nullable ................................... timestamp / datetime  
+  updated_at nullable ................................... timestamp / datetime  
+  specialty_id nullable, fillable ............................ bigint unsigned  
+  work_type_id nullable, fillable ............................ bigint unsigned  
+  address_id nullable, fillable .............................. bigint unsigned  
+  base_rate fillable ............................... decimal(10,2) / decimal:2  
+  hand_amount fillable ............................. decimal(10,2) / decimal:2  
+  payout_amount fillable ........................... decimal(10,2) / decimal:2  
+  tax_amount fillable .............................. decimal(10,2) / decimal:2  
+  is_paid fillable ...................................... tinyint(1) / boolean  
+  expenses_total fillable .......................... decimal(10,2) / decimal:2  
+  tax_status_id nullable, fillable ........................... bigint unsigned  
+  contract_type_id nullable, fillable ........................ bigint unsigned  
+
+  Relations ..................................................................  
+  workRequest BelongsTo ............................... App\Models\WorkRequest  
+  user BelongsTo ............................................. App\Models\User  
+  contractor BelongsTo ................................. App\Models\Contractor  
+  specialty BelongsTo ................................... App\Models\Specialty  
+  workType BelongsTo ..................................... App\Models\WorkType  
+  address BelongsTo ....................................... App\Models\Address  
+  taxStatus BelongsTo ................................... App\Models\TaxStatus  
+  contractType BelongsTo ............................. App\Models\ContractType  
+  shiftExpenses HasMany .............................. App\Models\ShiftExpense  
+  visitedLocations HasMany ........................ App\Models\VisitedLocation  
+  photos HasMany ....................................... App\Models\ShiftPhoto  
+
+  Events .....................................................................  
+
+  Observers ..................................................................  
+

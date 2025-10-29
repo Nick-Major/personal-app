@@ -9,30 +9,48 @@ class WorkRequest extends Model
 {
     use HasFactory;
 
+    // СТАТУСЫ ЗАЯВКИ
+    const STATUS_PUBLISHED = 'published';
+    const STATUS_IN_PROGRESS = 'in_progress';
+    const STATUS_CLOSED = 'closed';
+    const STATUS_NO_SHIFTS = 'no_shifts';
+    const STATUS_WORKING = 'working';
+    const STATUS_UNCLOSED = 'unclosed';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
+
+    // ТИПЫ ПЕРСОНАЛА
+    const PERSONNEL_OUR = 'our';
+    const PERSONNEL_CONTRACTOR = 'contractor';
+
     protected $fillable = [
-        'request_number', // Номер заявки
-        'project_id', // Проект
-        'purpose_id', // Назначение
-        'address_id', // Адрес
-        'selected_payer_company', // Проанализировать зачем нужна?
-        'initiator_id', // Инициатор
-        'brigadier_id', // Создать валидацию
-        'category_id', // ИЗМЕНЕНО: было specialty_id
-        'work_type_id', // Вид работ
-        'executor_type', // Понять нужен ли?
-        'executor_names', // НОВОЕ: ФИО исполнителей
-        'total_worked_hours', // НОВОЕ: общее кол-во отработанных часов
-        'workers_count', // Количество исполнителей по заявке
-        'estimated_shift_duration', // ИЗМЕНЕНО: было shift_duration
-        'work_date', // Дата работ по заявке
-        'start_time', // Время начала работы
-        'is_custom_payer',// Понять зачем нужно?
-        'additional_info', // ИЗМЕНЕНО: было comments
-        'status', // Статус заявки
-        'dispatcher_id', // Ответственный диспетчер
-        'published_at', // Дата и время публикации заявки
-        'staffed_at', // Дата и время завершения комплектования заявки
-        'completed_at', // Дата и время окончания заявки
+        'request_number',
+        'project_id',
+        'purpose_id',
+        'address_id',
+        'initiator_id',
+        'brigadier_id',
+        'brigadier_manual',     // ВОССТАНОВЛЕНО
+        'category_id',
+        'work_type_id',
+        'contractor_id',
+        'personnel_type',       // ВОССТАНОВЛЕНО
+        'mass_personnel_names',
+        'total_worked_hours',
+        'workers_count',
+        'estimated_shift_duration',
+        'work_date',
+        'start_time',
+        'custom_address',       // ВОССТАНОВЛЕНО
+        'is_custom_address',    // ВОССТАНОВЛЕНО
+        'additional_info',
+        'status',               // ВОССТАНОВЛЕНО
+        'dispatcher_id',
+        'published_at',
+        'staffed_at',
+        'completed_at',
+        'created_at',           // ВОССТАНОВЛЕНО
+        'updated_at',           // ВОССТАНОВЛЕНО
     ];
 
     protected $casts = [
@@ -41,9 +59,11 @@ class WorkRequest extends Model
         'published_at' => 'datetime',
         'staffed_at' => 'datetime',
         'completed_at' => 'datetime',
-        'is_custom_payer' => 'boolean',
+        'is_custom_address' => 'boolean',
         'estimated_shift_duration' => 'decimal:2',
         'total_worked_hours' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // === СВЯЗИ ===
@@ -62,16 +82,9 @@ class WorkRequest extends Model
         return $this->belongsTo(User::class, 'dispatcher_id');
     }
 
-    // ИЗМЕНЕНО: добавляем связь с категорией
     public function category()
     {
         return $this->belongsTo(Category::class);
-    }
-
-    // Оставляем для обратной совместимости, но делаем nullable
-    public function specialty()
-    {
-        return $this->belongsTo(Specialty::class);
     }
 
     public function workType()
@@ -79,7 +92,6 @@ class WorkRequest extends Model
         return $this->belongsTo(WorkType::class);
     }
 
-    // === НОВЫЕ СВЯЗИ ===
     public function project()
     {
         return $this->belongsTo(Project::class);
@@ -95,7 +107,11 @@ class WorkRequest extends Model
         return $this->belongsTo(Address::class);
     }
 
-    // === СУЩЕСТВУЮЩИЕ СВЯЗИ ===
+    public function contractor()
+    {
+        return $this->belongsTo(Contractor::class);
+    }
+
     public function shifts()
     {
         return $this->hasMany(Shift::class, 'request_id');
@@ -106,87 +122,73 @@ class WorkRequest extends Model
         return $this->hasMany(Assignment::class);
     }
 
-    public function brigadierAssignmentDate()
+    public function massPersonnelReports()
     {
-        return $this->hasOneThrough(
-            BrigadierAssignmentDate::class,
-            BrigadierAssignment::class,
-            'brigadier_id',
-            'assignment_id',
-            'brigadier_id',
-            'id'
-        )->whereDate('assignment_date', $this->work_date);
+        return $this->hasMany(MassPersonnelReport::class);
     }
 
-    // === НОВЫЕ МЕТОДЫ ===
-    
+    // === БИЗНЕС-МЕТОДЫ ===
+
     /**
-     * Получить отформатированные имена исполнителей
+     * Получить контактное лицо (бригадир или ручное)
      */
-    public function getFormattedExecutorNamesAttribute()
+    public function getContactPersonAttribute()
     {
-        if (!$this->executor_names) {
-            return 'Не указаны';
-        }
-        
-        // Если это обезличенный персонал - возвращаем как есть
-        if ($this->isAnonymousContractor()) {
-            return $this->executor_names;
-        }
-        
-        // Для персонализированных - форматируем список
-        $names = array_filter(array_map('trim', explode(',', $this->executor_names)));
-        return implode("\n", $names);
+        return $this->brigadier_manual ?: $this->brigadier?->full_name;
     }
-    
+
     /**
-     * Проверить, является ли заявка на обезличенный персонал подрядчика
+     * Получить финальный адрес (официальный или кастомный)
      */
-    public function isAnonymousContractor()
+    public function getFinalAddressAttribute()
     {
-        return $this->executor_type === 'contractor' && empty($this->executor_names);
+        if ($this->is_custom_address && $this->custom_address) {
+            return $this->custom_address;
+        }
+        return $this->address?->full_address;
     }
-    
+
     /**
-     * Обновить общее количество отработанных часов из смен
+     * Получить отображаемый тип персонала
      */
-    public function updateTotalWorkedHours()
+    public function getPersonnelTypeDisplayAttribute()
     {
-        $totalHours = $this->shifts()
-            ->where('status', 'completed')
-            ->get()
-            ->sum(function ($shift) {
-                return $shift->worked_minutes / 60; // Переводим минуты в часы
-            });
-            
-        $this->update(['total_worked_hours' => $totalHours]);
-        return $totalHours;
+        if ($this->personnel_type === self::PERSONNEL_OUR) {
+            return 'Наш персонал';
+        }
+        if ($this->personnel_type === self::PERSONNEL_CONTRACTOR && $this->contractor) {
+            return $this->contractor->name;
+        }
+        return 'Не указан';
     }
 
-    // === МЕТОД ДЛЯ ОПРЕДЕЛЕНИЯ ПЛАТЕЛЬЩИКА ===
-    public function determinePayer()
+    /**
+     * Проверить можно ли генерировать номер заявки
+     */
+    public function canGenerateRequestNumber()
     {
-        // Если можно выбирать вручную - возвращаем выбранную
-        if ($this->purpose && $this->purpose->has_custom_payer_selection && $this->selected_payer_company) {
-            return $this->selected_payer_company;
+        return $this->status === self::STATUS_CLOSED && 
+               $this->personnel_type && 
+               $this->category_id;
+    }
+
+    /**
+     * Сгенерировать номер заявки по правилам
+     */
+    public function generateRequestNumber()
+    {
+        if (!$this->canGenerateRequestNumber()) {
+            return null;
         }
 
-        // Ищем правило по адресу
-        if ($this->address_id) {
-            $rule = PurposeAddressRule::where('project_id', $this->project_id)
-                ->where('purpose_id', $this->purpose_id)
-                ->where('address_id', $this->address_id)
-                ->first();
-            
-            if ($rule) return $rule->payer_company;
+        if ($this->personnel_type === self::PERSONNEL_OUR) {
+            return $this->category->prefix . '-' . $this->id . '/' . $this->work_date->year;
         }
 
-        // Общее правило для назначения (без адреса)
-        $generalRule = PurposeAddressRule::where('project_id', $this->project_id)
-            ->where('purpose_id', $this->purpose_id)
-            ->whereNull('address_id')
-            ->first();
+        if ($this->personnel_type === self::PERSONNEL_CONTRACTOR && $this->contractor) {
+            return $this->contractor->contractor_code . '-' . $this->id . '/' . $this->work_date->year;
+        }
 
-        return $generalRule?->payer_company;
+        return null;
     }
 }
