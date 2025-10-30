@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SpecialtyResource\Pages;
 use App\Models\Specialty;
-use App\Models\Category;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -16,7 +15,6 @@ class SpecialtyResource extends Resource
     protected static ?string $model = Specialty::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    
     protected static ?string $navigationGroup = 'Справочники';
     protected static ?string $navigationLabel = 'Специальности';
     protected static ?int $navigationSort = 2;
@@ -30,55 +28,44 @@ class SpecialtyResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Основная информация')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Название специальности')
-                            ->required()
-                            ->maxLength(255)
-                            ->placeholder('Например: Садовник, Декоратор...')
-                            ->validationMessages([
-                                'unique' => 'Специальность с таким названием уже существует',
-                            ]),
-                            
-                        // ЗАМЕНЯЕМ текстовое поле на связь с Category
                         Forms\Components\Select::make('category_id')
                             ->label('Категория')
                             ->relationship('category', 'name')
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Название категории')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Описание')
-                                    ->maxLength(65535),
-                            ])
-                            ->helperText('Группа для группировки специальностей'),
+                            ->placeholder('Выберите категорию'),
+                            
+                        Forms\Components\TextInput::make('name')
+                            ->label('Название специальности')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Например: Каменщик, Маляр...'),
                             
                         Forms\Components\Textarea::make('description')
                             ->label('Описание')
                             ->rows(3)
                             ->maxLength(65535)
-                            ->placeholder('Подробное описание специальности...')
+                            ->placeholder('Описание специальности...')
                             ->columnSpanFull(),
                             
                         Forms\Components\TextInput::make('base_hourly_rate')
                             ->label('Базовая ставка (руб/час)')
                             ->numeric()
-                            ->minValue(0)
-                            ->step(1)
                             ->required()
-                            ->default(0)
-                            ->placeholder('0')
-                            ->helperText('Базовая почасовая ставка для наших исполнителей'),
-                            
+                            ->step(0.01)
+                            ->minValue(0)
+                            ->placeholder('0.00')
+                            ->suffix('руб/час'),
+                    ]),
+                    
+                Forms\Components\Section::make('Настройки')
+                    ->schema([
                         Forms\Components\Toggle::make('is_active')
                             ->label('Активная специальность')
                             ->default(true)
                             ->helperText('Неактивные специальности не будут показываться при выборе'),
-                    ])->columns(2),
+                    ]),
             ]);
     }
 
@@ -86,42 +73,28 @@ class SpecialtyResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Название')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('medium'),
-                    
-                // ОБНОВЛЯЕМ отображение категории
                 Tables\Columns\TextColumn::make('category.name')
                     ->label('Категория')
                     ->searchable()
                     ->sortable()
                     ->badge()
-                    ->color('primary')
-                    ->placeholder('—'),
+                    ->color('gray'),
                     
-                Tables\Columns\TextColumn::make('description')
-                    ->label('Описание')
-                    ->limit(50)
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Специальность')
                     ->searchable()
-                    ->placeholder('—'),
+                    ->sortable()
+                    ->weight('medium'),
                     
                 Tables\Columns\TextColumn::make('base_hourly_rate')
                     ->label('Ставка')
                     ->money('RUB')
+                    ->suffix('/час')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', ' ') . ' ₽/час' : 'Не указана'),
-                    
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Активно')
-                    ->boolean()
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->sortable(),
+                    ->alignEnd(),
                     
                 Tables\Columns\TextColumn::make('users_count')
-                    ->label('Пользователей')
+                    ->label('Исполнителей')
                     ->counts('users')
                     ->sortable()
                     ->badge()
@@ -132,50 +105,45 @@ class SpecialtyResource extends Resource
                     ->counts('contractorRates')
                     ->sortable()
                     ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'info' : 'gray'),
+                    
+                Tables\Columns\TextColumn::make('shifts_count')
+                    ->label('Смен')
+                    ->counts('shifts')
+                    ->sortable()
+                    ->badge()
                     ->color(fn ($state) => $state > 0 ? 'warning' : 'gray'),
                     
-                Tables\Columns\TextColumn::make('work_requests_count')
-                    ->label('Заявок')
-                    ->counts('workRequests')
+                Tables\Columns\TextColumn::make('mass_personnel_reports_count')
+                    ->label('Отчетов')
+                    ->counts('massPersonnelReports')
                     ->sortable()
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'primary' : 'gray'),
                     
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создана')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Активно')
+                    ->boolean()
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->sortable(),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Активные')
-                    ->placeholder('Все специальности')
-                    ->trueLabel('Только активные')
-                    ->falseLabel('Только неактивные'),
-                    
-                Tables\Filters\Filter::make('has_users')
-                    ->label('С пользователями')
-                    ->query(fn ($query) => $query->has('users')),
-                    
-                // ОБНОВЛЯЕМ фильтр категорий
                 Tables\Filters\SelectFilter::make('category')
                     ->label('Категория')
                     ->relationship('category', 'name')
                     ->searchable()
                     ->preload(),
+                    
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активные')
+                    ->placeholder('Все специальности')
+                    ->trueLabel('Только активные')
+                    ->falseLabel('Только неактивные'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->label('Редактировать'),
-                    
-                Tables\Actions\Action::make('view_users')
-                    ->label('Пользователи')
-                    ->icon('heroicon-o-users')
-                    ->url(fn (Specialty $record) => \App\Filament\Resources\UserResource::getUrl('index', [
-                        'tableFilters[specialties][values]' => [$record->id]
-                    ]))
-                    ->color('gray'),
                     
                 Tables\Actions\DeleteAction::make()
                     ->label('Удалить'),
@@ -198,7 +166,8 @@ class SpecialtyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Можно добавить RelationManager для ставок подрядчиков
+            // RelationManagers\UsersRelationManager::class,
+            // RelationManagers\ContractorRatesRelationManager::class,
         ];
     }
 

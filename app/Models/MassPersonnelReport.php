@@ -19,6 +19,7 @@ class MassPersonnelReport extends Model
         'tax_status_id',
         'contract_type_id',
         'category_id', 
+        'specialty_id', // ← ДОБАВЛЕНО
         'work_type_id',
         'base_hourly_rate',
         'total_amount',
@@ -47,7 +48,7 @@ class MassPersonnelReport extends Model
     // === СВЯЗИ ===
     public function workRequest()
     {
-        return $this->belongsTo(WorkRequest::class);
+        return $this->belongsTo(WorkRequest::class, 'request_id');
     }
 
     public function taxStatus()
@@ -63,6 +64,11 @@ class MassPersonnelReport extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function specialty()
+    {
+        return $this->belongsTo(Specialty::class);
     }
 
     public function workType()

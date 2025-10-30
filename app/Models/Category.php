@@ -33,6 +33,11 @@ class Category extends Model
             ->exists();
     }
 
+    public function workRequests()
+    {
+        return $this->hasMany(WorkRequest::class);
+    }
+
     // Проверка доступности для подрядчика
     public function hasContractorExecutors($contractorId = null)
     {

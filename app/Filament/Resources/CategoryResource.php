@@ -34,6 +34,14 @@ class CategoryResource extends Resource
                             ->maxLength(255)
                             ->placeholder('Например: Садовники, Строители...'),
                             
+                        Forms\Components\TextInput::make('prefix')
+                            ->label('Префикс для номера заявки')
+                            ->required()
+                            ->maxLength(10)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Например: ST, SA, UB...')
+                            ->helperText('Уникальный код (2-3 символа) для генерации номеров заявок'),
+                            
                         Forms\Components\Textarea::make('description')
                             ->label('Описание')
                             ->rows(3)
@@ -59,6 +67,14 @@ class CategoryResource extends Resource
                     ->sortable()
                     ->weight('medium'),
                     
+                Tables\Columns\TextColumn::make('prefix')
+                    ->label('Префикс')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('primary')
+                    ->formatStateUsing(fn ($state) => strtoupper($state)),
+                    
                 Tables\Columns\TextColumn::make('description')
                     ->label('Описание')
                     ->limit(50)
@@ -71,6 +87,13 @@ class CategoryResource extends Resource
                     ->sortable()
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
+                    
+                Tables\Columns\TextColumn::make('work_requests_count')
+                    ->label('Заявок')
+                    ->counts('workRequests')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'info' : 'gray'),
                     
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
