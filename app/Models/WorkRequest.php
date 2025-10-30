@@ -9,7 +9,9 @@ class WorkRequest extends Model
 {
     use HasFactory;
 
-    // СТАТУСЫ ЗАЯВКИ
+    // === СТАТУСЫ ЗАЯВКИ (ПОЛНЫЙ НАБОР) ===
+    const STATUS_DRAFT = 'draft';
+    const STATUS_PENDING_BRIGADIER_CONFIRMATION = 'pending_brigadier_confirmation';
     const STATUS_PUBLISHED = 'published';
     const STATUS_IN_PROGRESS = 'in_progress';
     const STATUS_CLOSED = 'closed';
@@ -30,27 +32,27 @@ class WorkRequest extends Model
         'address_id',
         'initiator_id',
         'brigadier_id',
-        'brigadier_manual',     // ВОССТАНОВЛЕНО
+        'brigadier_manual',
         'category_id',
         'work_type_id',
         'contractor_id',
-        'personnel_type',       // ВОССТАНОВЛЕНО
+        'personnel_type',
         'mass_personnel_names',
         'total_worked_hours',
         'workers_count',
         'estimated_shift_duration',
         'work_date',
         'start_time',
-        'custom_address',       // ВОССТАНОВЛЕНО
-        'is_custom_address',    // ВОССТАНОВЛЕНО
+        'custom_address',
+        'is_custom_address',
         'additional_info',
-        'status',               // ВОССТАНОВЛЕНО
+        'status',
         'dispatcher_id',
         'published_at',
         'staffed_at',
         'completed_at',
-        'created_at',           // ВОССТАНОВЛЕНО
-        'updated_at',           // ВОССТАНОВЛЕНО
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [
@@ -65,6 +67,31 @@ class WorkRequest extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    // === МАССИВЫ ДЛЯ УДОБСТВА ===
+    public static function getStatuses()
+    {
+        return [
+            self::STATUS_DRAFT => 'Черновик',
+            self::STATUS_PENDING_BRIGADIER_CONFIRMATION => 'Ожидает подтверждения бригадира',
+            self::STATUS_PUBLISHED => 'Опубликована',
+            self::STATUS_IN_PROGRESS => 'В работе',
+            self::STATUS_CLOSED => 'Закрыта',
+            self::STATUS_NO_SHIFTS => 'Нет смен',
+            self::STATUS_WORKING => 'Выполняется',
+            self::STATUS_UNCLOSED => 'Не закрыта',
+            self::STATUS_COMPLETED => 'Завершена',
+            self::STATUS_CANCELLED => 'Отменена',
+        ];
+    }
+
+    public static function getPersonnelTypes()
+    {
+        return [
+            self::PERSONNEL_OUR => 'Наш персонал',
+            self::PERSONNEL_CONTRACTOR => 'Персонал подрядчика',
+        ];
+    }
 
     // === СВЯЗИ ===
     public function initiator()
@@ -127,7 +154,61 @@ class WorkRequest extends Model
         return $this->hasMany(MassPersonnelReport::class);
     }
 
-    // === БИЗНЕС-МЕТОДЫ ===
+    // === НОВАЯ СВЯЗЬ: ИСТОРИЯ СТАТУСОВ ===
+    public function statusHistory()
+    {
+        return $this->hasMany(WorkRequestStatus::class)->orderBy('changed_at', 'desc');
+    }
+
+    public function currentStatusRecord()
+    {
+        return $this->hasOne(WorkRequestStatus::class)->latestOfMany();
+    }
+
+    // === SCOPE ДЛЯ ФИЛЬТРАЦИИ ===
+    public function scopeDraft($query)
+    {
+        return $query->where('status', self::STATUS_DRAFT);
+    }
+
+    public function scopePendingBrigadier($query)
+    {
+        return $query->where('status', self::STATUS_PENDING_BRIGADIER_CONFIRMATION);
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->where('status', self::STATUS_PUBLISHED);
+    }
+
+    public function scopeInProgress($query)
+    {
+        return $query->where('status', self::STATUS_IN_PROGRESS);
+    }
+
+    // === БИЗНЕС-МЕТОДЫ С ИСТОРИЕЙ ===
+
+    /**
+     * Безопасное изменение статуса с записью в историю
+     */
+    public function changeStatus($newStatus, $changedBy = null, $notes = null)
+    {
+        $oldStatus = $this->status;
+        
+        // Обновляем текущий статус
+        $this->update(['status' => $newStatus]);
+        
+        // Записываем в историю
+        WorkRequestStatus::create([
+            'work_request_id' => $this->id,
+            'status' => $newStatus,
+            'changed_by_id' => $changedBy ?? auth()->id(),
+            'changed_at' => now(),
+            'notes' => $notes ?? "Status changed from {$oldStatus} to {$newStatus}"
+        ]);
+
+        return $this;
+    }
 
     /**
      * Получить контактное лицо (бригадир или ручное)
@@ -153,13 +234,15 @@ class WorkRequest extends Model
      */
     public function getPersonnelTypeDisplayAttribute()
     {
-        if ($this->personnel_type === self::PERSONNEL_OUR) {
-            return 'Наш персонал';
-        }
-        if ($this->personnel_type === self::PERSONNEL_CONTRACTOR && $this->contractor) {
-            return $this->contractor->name;
-        }
-        return 'Не указан';
+        return self::getPersonnelTypes()[$this->personnel_type] ?? 'Не указан';
+    }
+
+    /**
+     * Получить отображаемый статус
+     */
+    public function getStatusDisplayAttribute()
+    {
+        return self::getStatuses()[$this->status] ?? $this->status;
     }
 
     /**
@@ -190,5 +273,27 @@ class WorkRequest extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Можно ли назначать бригадира для этой заявки
+     */
+    public function canAssignBrigadier()
+    {
+        return in_array($this->status, [
+            self::STATUS_DRAFT,
+            self::STATUS_PENDING_BRIGADIER_CONFIRMATION
+        ]);
+    }
+
+    /**
+     * Заявка находится на этапе планирования
+     */
+    public function isInPlanningStage()
+    {
+        return in_array($this->status, [
+            self::STATUS_DRAFT,
+            self::STATUS_PENDING_BRIGADIER_CONFIRMATION
+        ]);
     }
 }
