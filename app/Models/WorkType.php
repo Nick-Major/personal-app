@@ -11,17 +11,15 @@ class WorkType extends Model
 
     protected $fillable = [
         'name',
-        'description', 
-        'premium_rate', // ДОБАВЛЯЕМ
+        'description',
         'is_active'
     ];
 
     protected $casts = [
-        'premium_rate' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
-    // Связи остаются без изменений
+    // Связи
     public function workRequests()
     {
         return $this->hasMany(WorkRequest::class);
@@ -32,8 +30,8 @@ class WorkType extends Model
         return $this->hasMany(Shift::class);
     }
 
-    public function rates()
+    public function massPersonnelReports()
     {
-        return $this->hasMany(Rate::class);
+        return $this->hasMany(MassPersonnelReport::class);
     }
 }

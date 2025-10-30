@@ -18,20 +18,35 @@ CREATE TABLE `address_project` (
   KEY `address_project_project_id_foreign` (`project_id`),
   CONSTRAINT `address_project_address_id_foreign` FOREIGN KEY (`address_id`) REFERENCES `addresses` (`id`) ON DELETE CASCADE,
   CONSTRAINT `address_project_project_id_foreign` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Связь адресов с проектами';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Связь адресов с проектами';
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `address_templates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `address_templates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `full_address` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Полный адрес',
+  `location_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Тип локации',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Активен',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `address_templates_is_active_index` (`is_active`),
+  KEY `address_templates_location_type_index` (`location_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `addresses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `addresses` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `short_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `full_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `location_type` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Адреса';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Адреса';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `assignments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -109,12 +124,84 @@ CREATE TABLE `cache_locks` (
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Блокировки кэша';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `categories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `prefix` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Префикс для генерации номеров заявок (GARD, DECOR, etc.)',
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `compensations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `compensations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `compensatable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `compensatable_id` bigint unsigned NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Описание компенсации',
+  `requested_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT 'Запрошенная сумма',
+  `approved_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT 'Утвержденная сумма',
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending, approved, rejected',
+  `approved_by` bigint unsigned DEFAULT NULL,
+  `approval_notes` text COLLATE utf8mb4_unicode_ci COMMENT 'Комментарии при утверждении',
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `compensations_compensatable_type_compensatable_id_index` (`compensatable_type`,`compensatable_id`),
+  KEY `compensations_approved_by_foreign` (`approved_by`),
+  KEY `compensations_compensatable_type_compensatable_id_status_index` (`compensatable_type`,`compensatable_id`,`status`),
+  CONSTRAINT `compensations_approved_by_foreign` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `contract_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contract_types` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `contract_types_code_unique` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `contractor_rates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contractor_rates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `contractor_id` bigint unsigned NOT NULL,
+  `specialty_id` bigint unsigned NOT NULL,
+  `hourly_rate` decimal(10,2) NOT NULL,
+  `is_anonymous` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `contractor_rates_contractor_id_specialty_id_is_anonymous_unique` (`contractor_id`,`specialty_id`,`is_anonymous`),
+  KEY `contractor_rates_specialty_id_foreign` (`specialty_id`),
+  CONSTRAINT `contractor_rates_contractor_id_foreign` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `contractor_rates_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `contractors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `contractors` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contractor_code` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Уникальный код подрядчика для массового персонала (ABC, XYZ, etc.)',
   `contact_person` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `phone` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `contact_person_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -130,27 +217,16 @@ CREATE TABLE `contractors` (
   `inn` varchar(12) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `bank_details` text COLLATE utf8mb4_unicode_ci,
   `notes` text COLLATE utf8mb4_unicode_ci,
+  `contract_type_id` bigint unsigned DEFAULT NULL,
+  `tax_status_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `contractors_user_id_foreign` (`user_id`),
+  KEY `contractors_contract_type_id_foreign` (`contract_type_id`),
+  KEY `contractors_tax_status_id_foreign` (`tax_status_id`),
+  CONSTRAINT `contractors_contract_type_id_foreign` FOREIGN KEY (`contract_type_id`) REFERENCES `contract_types` (`id`),
+  CONSTRAINT `contractors_tax_status_id_foreign` FOREIGN KEY (`tax_status_id`) REFERENCES `tax_statuses` (`id`),
   CONSTRAINT `contractors_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Подрядчики';
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `expenses`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `expenses` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `shift_id` bigint unsigned NOT NULL,
-  `type` enum('lunch','travel','unforeseen') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `amount` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `minutes` int unsigned DEFAULT NULL,
-  `comment` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `expenses_shift_id_foreign` (`shift_id`),
-  CONSTRAINT `expenses_shift_id_foreign` FOREIGN KEY (`shift_id`) REFERENCES `shifts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Расходы';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `failed_jobs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -218,6 +294,84 @@ CREATE TABLE `jobs` (
   KEY `jobs_queue_index` (`queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Очередь заданий';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `mass_personnel_locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mass_personnel_locations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `report_id` bigint unsigned NOT NULL,
+  `address_id` bigint unsigned DEFAULT NULL,
+  `custom_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `started_at` timestamp NOT NULL,
+  `ended_at` timestamp NULL DEFAULT NULL,
+  `duration_minutes` int NOT NULL DEFAULT '0',
+  `photo_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_last_location` tinyint(1) NOT NULL DEFAULT '0',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `mass_personnel_locations_report_id_foreign` (`report_id`),
+  KEY `mass_personnel_locations_address_id_foreign` (`address_id`),
+  CONSTRAINT `mass_personnel_locations_address_id_foreign` FOREIGN KEY (`address_id`) REFERENCES `addresses` (`id`),
+  CONSTRAINT `mass_personnel_locations_report_id_foreign` FOREIGN KEY (`report_id`) REFERENCES `mass_personnel_reports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `mass_personnel_reports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mass_personnel_reports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `workers_count` int NOT NULL,
+  `total_hours` decimal(8,2) NOT NULL,
+  `worker_names` text COLLATE utf8mb4_unicode_ci COMMENT 'ФИО обезличенных работников',
+  `compensation_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `compensation_description` text COLLATE utf8mb4_unicode_ci,
+  `tax_status_id` bigint unsigned DEFAULT NULL,
+  `contract_type_id` bigint unsigned DEFAULT NULL,
+  `category_id` bigint unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
+  `base_hourly_rate` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `total_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `expenses_total` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `tax_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `net_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `status` enum('draft','pending_approval','approved','paid') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `submitted_at` timestamp NULL DEFAULT NULL,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `paid_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `mass_personnel_reports_tax_status_id_foreign` (`tax_status_id`),
+  KEY `mass_personnel_reports_contract_type_id_foreign` (`contract_type_id`),
+  KEY `mass_personnel_reports_category_id_foreign` (`category_id`),
+  KEY `mass_personnel_reports_work_type_id_foreign` (`work_type_id`),
+  CONSTRAINT `mass_personnel_reports_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
+  CONSTRAINT `mass_personnel_reports_contract_type_id_foreign` FOREIGN KEY (`contract_type_id`) REFERENCES `contract_types` (`id`),
+  CONSTRAINT `mass_personnel_reports_tax_status_id_foreign` FOREIGN KEY (`tax_status_id`) REFERENCES `tax_statuses` (`id`),
+  CONSTRAINT `mass_personnel_reports_work_type_id_foreign` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `mass_personnel_visited_locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mass_personnel_visited_locations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `mass_personnel_report_id` bigint unsigned NOT NULL,
+  `address_id` bigint unsigned DEFAULT NULL,
+  `custom_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `started_at` timestamp NOT NULL,
+  `ended_at` timestamp NULL DEFAULT NULL,
+  `duration_minutes` int NOT NULL DEFAULT '0',
+  `photo_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_last_location` tinyint(1) NOT NULL DEFAULT '0',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -226,7 +380,7 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Миграции базы данных';
+) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Миграции базы данных';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `model_has_permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -293,7 +447,7 @@ CREATE TABLE `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Токены персонального доступа';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Токены персонального доступа';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `project_assignments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -322,7 +476,7 @@ CREATE TABLE `projects` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Проекты';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Проекты';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `purpose_address_rules`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -374,7 +528,7 @@ CREATE TABLE `purpose_templates` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Шаблоны назначений';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Шаблоны назначений';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `purposes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -393,7 +547,7 @@ CREATE TABLE `purposes` (
   PRIMARY KEY (`id`),
   KEY `purposes_project_id_foreign` (`project_id`),
   CONSTRAINT `purposes_project_id_foreign` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Назначения работ';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Назначения работ';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `rates`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -416,21 +570,6 @@ CREATE TABLE `rates` (
   CONSTRAINT `rates_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `rates_work_type_id_foreign` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Ставки оплаты';
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `receipts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `receipts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `expense_id` bigint unsigned NOT NULL,
-  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `receipts_expense_id_foreign` (`expense_id`),
-  CONSTRAINT `receipts_expense_id_foreign` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Чеки';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `role_has_permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -472,6 +611,23 @@ CREATE TABLE `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Сессии пользователей';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `shift_expenses`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `shift_expenses` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `shift_id` bigint unsigned NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `receipt_photo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `expenses_shift_id_foreign` (`shift_id`),
+  CONSTRAINT `expenses_shift_id_foreign` FOREIGN KEY (`shift_id`) REFERENCES `shifts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Расходы';
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `shift_photos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -482,28 +638,6 @@ CREATE TABLE `shift_photos` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Фотографии смен';
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `shift_segments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `shift_segments` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `shift_id` bigint unsigned NOT NULL,
-  `specialty_id` bigint unsigned DEFAULT NULL,
-  `work_type_id` bigint unsigned DEFAULT NULL,
-  `minutes` int unsigned NOT NULL DEFAULT '0',
-  `hourly_rate_snapshot` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `amount` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `shift_segments_shift_id_foreign` (`shift_id`),
-  KEY `shift_segments_specialty_id_foreign` (`specialty_id`),
-  KEY `shift_segments_work_type_id_foreign` (`work_type_id`),
-  CONSTRAINT `shift_segments_shift_id_foreign` FOREIGN KEY (`shift_id`) REFERENCES `shifts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `shift_segments_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `shift_segments_work_type_id_foreign` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Сегменты смен';
-/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `shifts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -512,35 +646,47 @@ CREATE TABLE `shifts` (
   `request_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned DEFAULT NULL,
   `contractor_id` bigint unsigned DEFAULT NULL,
-  `contractor_worker_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `role` enum('executor','brigadier') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'executor',
   `work_date` date NOT NULL,
+  `month_period` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `start_time` time DEFAULT NULL,
   `end_time` time DEFAULT NULL,
-  `status` enum('scheduled','started','completed','cancelled','no_show') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'scheduled',
-  `shift_started_at` timestamp NULL DEFAULT NULL,
-  `shift_ended_at` timestamp NULL DEFAULT NULL,
+  `status` enum('scheduled','active','pending_approval','completed','paid','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'scheduled',
   `notes` text COLLATE utf8mb4_unicode_ci,
   `worked_minutes` int unsigned NOT NULL DEFAULT '0',
-  `lunch_minutes` int unsigned NOT NULL DEFAULT '0',
-  `travel_expense_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `compensation_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `compensation_description` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `specialty_id` bigint unsigned DEFAULT NULL,
   `work_type_id` bigint unsigned DEFAULT NULL,
-  `hourly_rate_snapshot` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `total_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `address_id` bigint unsigned DEFAULT NULL,
+  `base_rate` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `hand_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `payout_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `tax_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `is_paid` tinyint(1) NOT NULL DEFAULT '0',
   `expenses_total` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `grand_total` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `tax_status_id` bigint unsigned DEFAULT NULL,
+  `contract_type_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `shifts_request_id_foreign` (`request_id`),
   KEY `shifts_contractor_id_foreign` (`contractor_id`),
   KEY `shifts_specialty_id_foreign` (`specialty_id`),
   KEY `shifts_work_type_id_foreign` (`work_type_id`),
   KEY `shifts_user_id_work_date_role_index` (`user_id`,`work_date`,`role`),
+  KEY `shifts_tax_status_id_foreign` (`tax_status_id`),
+  KEY `shifts_contract_type_id_foreign` (`contract_type_id`),
+  KEY `shifts_address_id_foreign` (`address_id`),
+  KEY `shifts_month_user_idx` (`month_period`,`user_id`),
+  KEY `shifts_month_contractor_idx` (`month_period`,`contractor_id`),
+  KEY `shifts_status_date_idx` (`status`,`work_date`),
+  CONSTRAINT `shifts_address_id_foreign` FOREIGN KEY (`address_id`) REFERENCES `addresses` (`id`),
+  CONSTRAINT `shifts_contract_type_id_foreign` FOREIGN KEY (`contract_type_id`) REFERENCES `contract_types` (`id`),
   CONSTRAINT `shifts_contractor_id_foreign` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`),
   CONSTRAINT `shifts_request_id_foreign` FOREIGN KEY (`request_id`) REFERENCES `work_requests` (`id`),
   CONSTRAINT `shifts_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `shifts_tax_status_id_foreign` FOREIGN KEY (`tax_status_id`) REFERENCES `tax_statuses` (`id`),
   CONSTRAINT `shifts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `shifts_work_type_id_foreign` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Смены';
@@ -550,16 +696,36 @@ DROP TABLE IF EXISTS `specialties`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `specialties` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `base_hourly_rate` decimal(10,2) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `category_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `specialties_code_unique` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Специальности';
+  KEY `specialties_category_id_foreign` (`category_id`),
+  CONSTRAINT `specialties_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Специальности';
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `tax_statuses`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tax_statuses` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `contract_type_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tax_rate` decimal(5,3) NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `tax_statuses_contract_type_id_foreign` (`contract_type_id`),
+  CONSTRAINT `tax_statuses_contract_type_id_foreign` FOREIGN KEY (`contract_type_id`) REFERENCES `contract_types` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `user_specialties`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -576,7 +742,7 @@ CREATE TABLE `user_specialties` (
   KEY `user_specialties_specialty_id_foreign` (`specialty_id`),
   CONSTRAINT `user_specialties_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_specialties_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Специальности пользователей';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Специальности пользователей';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -596,82 +762,17 @@ CREATE TABLE `users` (
   `telegram_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `contractor_id` bigint unsigned DEFAULT NULL,
   `notes` text COLLATE utf8mb4_unicode_ci,
+  `contract_type_id` bigint unsigned DEFAULT NULL,
+  `tax_status_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_email_unique` (`email`),
   KEY `users_contractor_id_foreign` (`contractor_id`),
   KEY `users_surname_name_index` (`surname`,`name`),
-  CONSTRAINT `users_contractor_id_foreign` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Пользователи системы';
+  KEY `users_contract_type_id_foreign` (`contract_type_id`),
+  KEY `users_tax_status_id_foreign` (`tax_status_id`),
+  CONSTRAINT `users_contract_type_id_foreign` FOREIGN KEY (`contract_type_id`) REFERENCES `contract_types` (`id`),
+  CONSTRAINT `users_contractor_id_foreign` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`),
+  CONSTRAINT `users_tax_status_id_foreign` FOREIGN KEY (`tax_status_id`) REFERENCES `tax_statuses` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Пользователи системы';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `v_addresses`;
-/*!50001 DROP VIEW IF EXISTS `v_addresses`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_addresses` AS SELECT 
- 1 AS `id`,
- 1 AS `name`,
- 1 AS `full_address`,
- 1 AS `description`,
- 1 AS `created_at`,
- 1 AS `updated_at`*/;
-SET character_set_client = @saved_cs_client;
-DROP TABLE IF EXISTS `v_assignments`;
-/*!50001 DROP VIEW IF EXISTS `v_assignments`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_assignments` AS SELECT 
- 1 AS `id`,
- 1 AS `work_request_id`,
- 1 AS `user_id`,
- 1 AS `role_in_shift`,
- 1 AS `source`,
- 1 AS `planned_date`,
- 1 AS `created_at`,
- 1 AS `updated_at`*/;
-SET character_set_client = @saved_cs_client;
-DROP TABLE IF EXISTS `v_projects`;
-/*!50001 DROP VIEW IF EXISTS `v_projects`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_projects` AS SELECT 
- 1 AS `id`,
- 1 AS `name`,
- 1 AS `description`,
- 1 AS `start_date`,
- 1 AS `end_date`,
- 1 AS `default_payer_company`,
- 1 AS `status`,
- 1 AS `created_at`,
- 1 AS `updated_at`*/;
-SET character_set_client = @saved_cs_client;
-DROP TABLE IF EXISTS `v_shifts`;
-/*!50001 DROP VIEW IF EXISTS `v_shifts`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_shifts` AS SELECT 
- 1 AS `id`,
- 1 AS `request_id`,
- 1 AS `user_id`,
- 1 AS `contractor_id`,
- 1 AS `contractor_worker_name`,
- 1 AS `role`,
- 1 AS `work_date`,
- 1 AS `start_time`,
- 1 AS `end_time`,
- 1 AS `status`,
- 1 AS `shift_started_at`,
- 1 AS `shift_ended_at`,
- 1 AS `notes`,
- 1 AS `worked_minutes`,
- 1 AS `lunch_minutes`,
- 1 AS `travel_expense_amount`,
- 1 AS `created_at`,
- 1 AS `updated_at`,
- 1 AS `specialty_id`,
- 1 AS `work_type_id`,
- 1 AS `hourly_rate_snapshot`,
- 1 AS `total_amount`,
- 1 AS `expenses_total`,
- 1 AS `grand_total`*/;
-SET character_set_client = @saved_cs_client;
-DROP TABLE IF EXISTS `v_users`;

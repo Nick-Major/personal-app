@@ -194,12 +194,6 @@ class User extends Authenticatable
         return $this->hasMany(InitiatorGrant::class, 'initiator_id');
     }
 
-    // === СТАВКИ - НОВЫЕ СВЯЗИ ===
-    public function rates()
-    {
-        return $this->hasMany(Rate::class);
-    }
-
     // В модель User добавляем:
     public function contractType()
     {
@@ -385,121 +379,12 @@ class User extends Authenticatable
     /**
      * Получить ставку для специальности и вида работ с учетом приоритетов
      */
-    public function getRateForSpecialtyAndWorkType($specialtyId, $workTypeId = null, $date = null)
-    {
-        $date = $date ?: now();
-        
-        // 1. Получаем базовую ставку пользователя для специальности
-        $userSpecialty = $this->specialties()
-            ->where('specialties.id', $specialtyId)
-            ->first();
-        
-        if (!$userSpecialty) {
-            return null; // Пользователь не имеет этой специальности
-        }
-        
-        $baseRate = $userSpecialty->pivot->base_hourly_rate ?? $userSpecialty->base_hourly_rate;
-        
-        if (!$workTypeId) {
-            return $baseRate; // Если вид работ не указан - возвращаем базовую ставку
-        }
-        
-        // 2. Ищем ставки в порядке приоритета:
-        $rates = Rate::where(function($query) use ($specialtyId, $workTypeId, $date) {
-                $query->where('specialty_id', $specialtyId)
-                      ->where('work_type_id', $workTypeId)
-                      ->where(function($q) use ($date) {
-                          $q->whereNull('effective_from')->orWhere('effective_from', '<=', $date);
-                      })
-                      ->where(function($q) use ($date) {
-                          $q->whereNull('effective_to')->orWhere('effective_to', '>=', $date);
-                      });
-            })
-            ->orderBy('user_id', 'desc') // Сначала индивидуальные ставки (user_id NOT NULL)
-            ->orderBy('effective_from', 'desc') // Затем более новые ставки
-            ->get();
-
-        // 3. Применяем приоритеты:
-        foreach ($rates as $rate) {
-            // Приоритет 1: Индивидуальная ставка пользователя
-            if ($rate->user_id === $this->id) {
-                return $rate->hourly_rate;
-            }
-            
-            // Приоритет 2: Базовая ставка специальности для вида работ
-            if (!$rate->user_id) {
-                return $rate->hourly_rate;
-            }
-        }
-        
-        // 4. Если не нашли специальных ставок - возвращаем базовую
-        return $baseRate;
-    }
 
     /**
      * Получить все доступные ставки пользователя
      */
-    public function getAvailableRates($date = null)
-    {
-        $date = $date ?: now();
-        
-        return $this->specialties->mapWithKeys(function ($specialty) use ($date) {
-            $baseRate = $specialty->pivot->base_hourly_rate ?? $specialty->base_hourly_rate;
-            
-            $workTypeRates = \App\Models\WorkType::all()->map(function ($workType) use ($specialty, $date) {
-                return [
-                    'work_type_id' => $workType->id,
-                    'work_type_name' => $workType->name,
-                    'rate' => $this->getRateForSpecialtyAndWorkType($specialty->id, $workType->id, $date),
-                    'is_custom' => $this->hasCustomRateForSpecialtyAndWorkType($specialty->id, $workType->id, $date)
-                ];
-            });
-            
-            return [
-                $specialty->name => [
-                    'specialty_id' => $specialty->id,
-                    'base_rate' => $baseRate,
-                    'work_types' => $workTypeRates
-                ]
-            ];
-        });
-    }
-
-    /**
-     * Проверить есть ли индивидуальная ставка для специальности и вида работ
-     */
-    public function hasCustomRateForSpecialtyAndWorkType($specialtyId, $workTypeId, $date = null)
-    {
-        $date = $date ?: now();
-        
-        return Rate::where('user_id', $this->id)
-            ->where('specialty_id', $specialtyId)
-            ->where('work_type_id', $workTypeId)
-            ->where(function($q) use ($date) {
-                $q->whereNull('effective_from')->orWhere('effective_from', '<=', $date);
-            })
-            ->where(function($q) use ($date) {
-                $q->whereNull('effective_to')->orWhere('effective_to', '>=', $date);
-            })
-            ->exists();
-    }
 
     /**
      * Установить индивидуальную ставку для специальности и вида работ
      */
-    public function setCustomRate($specialtyId, $workTypeId, $rate, $effectiveFrom = null, $effectiveTo = null)
-    {
-        return Rate::updateOrCreate(
-            [
-                'user_id' => $this->id,
-                'specialty_id' => $specialtyId,
-                'work_type_id' => $workTypeId,
-            ],
-            [
-                'hourly_rate' => $rate,
-                'effective_from' => $effectiveFrom,
-                'effective_to' => $effectiveTo,
-            ]
-        );
-    }
 }
