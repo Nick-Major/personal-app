@@ -1,5 +1,4 @@
 <?php
-// app/Livewire/Dashboard.php
 
 namespace App\Livewire;
 
@@ -9,7 +8,7 @@ use App\Models\WorkRequest;
 use App\Models\Category;
 use App\Models\Contractor;
 
-class Dashboard extends Component
+class MainDashboard extends Component
 {
     public function render()
     {

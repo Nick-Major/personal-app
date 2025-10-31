@@ -13,22 +13,20 @@ class BrigadierAssignment extends Model
     protected $fillable = [
         'brigadier_id',
         'initiator_id',
-        'can_create_requests', // ДОБАВЛЕНО - права Инициатора-Бригадира
-        'comment', // ДОБАВЛЯЕМ
-        'status', // 'pending', 'confirmed', 'rejected'
-        'confirmed_at',
-        'rejected_at', 
-        'rejection_reason'
+        'can_create_requests',
+        'comment',
+        'planned_address_id',        // ✅ ДОБАВИТЬ
+        'planned_custom_address',    // ✅ ДОБАВИТЬ  
+        'is_custom_planned_address', // ✅ ДОБАВИТЬ
     ];
 
     protected $casts = [
-        'confirmed_at' => 'datetime',
-        'rejected_at' => 'datetime',
         'can_create_requests' => 'boolean',
+        'is_custom_planned_address' => 'boolean', // ✅ ДОБАВИТЬ
     ];
 
     // === СВЯЗИ ===
-    
+
     public function brigadier()
     {
         return $this->belongsTo(User::class, 'brigadier_id');
@@ -39,13 +37,16 @@ class BrigadierAssignment extends Model
         return $this->belongsTo(User::class, 'initiator_id');
     }
 
-    // ИСПРАВЛЕНО: правильное имя отношения для Filament
+    public function plannedAddress()
+    {
+        return $this->belongsTo(Address::class, 'planned_address_id');
+    }
+
     public function assignment_dates(): HasMany
     {
         return $this->hasMany(BrigadierAssignmentDate::class, 'assignment_id');
     }
 
-    // Alias для обратной совместимости
     public function assignmentDates()
     {
         return $this->assignment_dates();
@@ -62,21 +63,21 @@ class BrigadierAssignment extends Model
         return $this->hasMany(WorkRequest::class, 'brigadier_id', 'brigadier_id');
     }
 
-    // Scope для подтвержденных назначений
-    public function scopeConfirmed($query)
+    // === SCOPES (ОБНОВЛЕННЫЕ) ===
+
+    // Scope для назначений с подтвержденными датами
+    public function scopeWithConfirmedDates($query)
     {
-        return $query->where('status', 'confirmed');
+        return $query->whereHas('assignment_dates', function($q) {
+            $q->where('status', 'confirmed');
+        });
     }
 
-    // Scope для ожидающих подтверждения  
-    public function scopePending($query)
+    // Scope для назначений с ожидающими датами
+    public function scopeWithPendingDates($query)
     {
-        return $query->where('status', 'pending');
-    }
-
-    // Scope для отклоненных
-    public function scopeRejected($query)
-    {
-        return $query->where('status', 'rejected');
+        return $query->whereHas('assignment_dates', function($q) {
+            $q->where('status', 'pending');
+        });
     }
 }

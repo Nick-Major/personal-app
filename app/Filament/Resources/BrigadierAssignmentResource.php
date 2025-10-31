@@ -16,22 +16,12 @@ class BrigadierAssignmentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
 
-     // ДОБАВЛЯЕМ РУССКИЕ LABELS И ГРУППУ
     protected static ?string $navigationGroup = 'Управление персоналом';
     protected static ?string $navigationLabel = 'Назначения бригадиров';
     protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'назначение бригадира';
     protected static ?string $pluralModelLabel = 'Назначения бригадиров';
-
-    public static function getPageLabels(): array
-    {
-        return [
-            'index' => 'Назначения бригадиров',
-            'create' => 'Создать назначение',
-            'edit' => 'Редактировать назначение',
-        ];
-    }
 
     public static function form(Form $form): Form
     {
@@ -58,17 +48,7 @@ class BrigadierAssignmentResource extends Resource
                         Forms\Components\Toggle::make('can_create_requests')
                             ->label('Может создавать заявки')
                             ->default(false),
-                            
-                        Forms\Components\Select::make('status')
-                            ->label('Статус назначения')
-                            ->options([
-                                'active' => 'Активно',
-                                'inactive' => 'Неактивно',
-                            ])
-                            ->required()
-                            ->default('active'),
 
-                        // ДОБАВЛЯЕМ КОММЕНТАРИЙ
                         Forms\Components\Textarea::make('comment')
                             ->label('Комментарий к назначению')
                             ->maxLength(65535)
@@ -77,12 +57,33 @@ class BrigadierAssignmentResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(2),
                     
+                Forms\Components\Section::make('Плановый адрес')
+                    ->schema([
+                        Forms\Components\Select::make('planned_address_id')
+                            ->label('Официальный адрес')
+                            ->relationship('plannedAddress', 'short_name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+                            
+                        Forms\Components\Textarea::make('planned_custom_address')
+                            ->label('Неофициальный адрес')
+                            ->maxLength(65535)
+                            ->rows(2)
+                            ->placeholder('Введите адрес вручную...')
+                            ->nullable(),
+                            
+                        Forms\Components\Toggle::make('is_custom_planned_address')
+                            ->label('Использовать неофициальный адрес')
+                            ->default(false),
+                    ])->columns(2),
+                    
                 Forms\Components\Section::make('Даты назначения')
                     ->description('Укажите даты, на которые назначается бригадир')
                     ->schema([
-                        Forms\Components\Repeater::make('assignmentDates')
+                        Forms\Components\Repeater::make('assignment_dates')
                             ->label('Даты назначения')
-                            ->relationship('assignmentDates')
+                            ->relationship('assignment_dates')
                             ->schema([
                                 Forms\Components\DatePicker::make('assignment_date')
                                     ->label('Дата')
@@ -126,7 +127,6 @@ class BrigadierAssignmentResource extends Resource
                     ->searchable(['name', 'surname'])
                     ->sortable(),
 
-                // ДОБАВЛЯЕМ КОЛОНКУ КОММЕНТАРИЯ
                 Tables\Columns\TextColumn::make('comment')
                     ->label('Комментарий')
                     ->limit(50)
@@ -136,11 +136,6 @@ class BrigadierAssignmentResource extends Resource
                 Tables\Columns\IconColumn::make('can_create_requests')
                     ->label('Может создавать заявки')
                     ->boolean(),
-                    
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Статус')
-                    ->badge()
-                    ->color(fn ($state) => $state === 'active' ? 'success' : 'gray'),
                     
                 Tables\Columns\TextColumn::make('dates_count')
                     ->label('Кол-во дат')
@@ -152,6 +147,11 @@ class BrigadierAssignmentResource extends Resource
                     ->getStateUsing(fn ($record) => $record->assignment_dates()->where('status', 'confirmed')->count())
                     ->sortable(),
                     
+                Tables\Columns\TextColumn::make('planned_address.short_name')
+                    ->label('Плановый адрес')
+                    ->placeholder('Не указан')
+                    ->toggleable(),
+                    
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создано')
                     ->dateTime()
@@ -159,13 +159,6 @@ class BrigadierAssignmentResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Статус назначения')
-                    ->options([
-                        'active' => 'Активно', 
-                        'inactive' => 'Неактивно',
-                    ]),
-                    
                 Tables\Filters\Filter::make('can_create_requests')
                     ->label('Может создавать заявки')
                     ->query(fn ($query) => $query->where('can_create_requests', true)),
@@ -175,6 +168,12 @@ class BrigadierAssignmentResource extends Resource
                     ->relationship('brigadier', 'name')
                     ->searchable()
                     ->preload(),
+                    
+                Tables\Filters\SelectFilter::make('initiator_id')
+                    ->label('Инициатор')
+                    ->relationship('initiator', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -182,7 +181,6 @@ class BrigadierAssignmentResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->label('Удалить'),
             ])
-            // ОБНОВЛЯЕМ BULK ACTIONS
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
