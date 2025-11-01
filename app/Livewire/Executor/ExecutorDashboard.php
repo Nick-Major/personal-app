@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Executor;
 
-use App\Models\BrigadierAssignment;
+use App\Models\Assignment;
 use App\Models\WorkRequest;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -15,7 +15,7 @@ class ExecutorDashboard extends Component
 
     public function getPendingAssignmentsProperty()
     {
-        return BrigadierAssignment::with(['workRequests', 'assignment_dates', 'initiator'])
+        return Assignment::with(['workRequests', 'assignment_dates', 'initiator'])
             ->where('brigadier_id', auth()->id())
             ->where('status', 'pending')
             ->whereHas('assignment_dates')
@@ -25,7 +25,7 @@ class ExecutorDashboard extends Component
 
     public function getConfirmedAssignmentsProperty()
     {
-        return BrigadierAssignment::with(['workRequests', 'assignment_dates', 'initiator'])
+        return Assignment::with(['workRequests', 'assignment_dates', 'initiator'])
             ->where('brigadier_id', auth()->id())
             ->where('status', 'active')
             ->whereHas('assignment_dates')
@@ -35,7 +35,7 @@ class ExecutorDashboard extends Component
 
     public function confirmAssignment($assignmentId)
     {
-        $assignment = BrigadierAssignment::findOrFail($assignmentId);
+        $assignment = Assignment::findOrFail($assignmentId);
         
         if ($assignment->brigadier_id !== auth()->id()) {
             session()->flash('error', 'Ошибка доступа');
@@ -46,7 +46,7 @@ class ExecutorDashboard extends Component
         $assignmentDates = $assignment->assignment_dates->pluck('work_date');
         
         foreach ($assignmentDates as $date) {
-            $existingAssignment = BrigadierAssignment::where('brigadier_id', auth()->id())
+            $existingAssignment = Assignment::where('brigadier_id', auth()->id())
                 ->where('status', 'active')
                 ->whereHas('assignment_dates', function ($query) use ($date) {
                     $query->where('work_date', $date);
@@ -78,7 +78,7 @@ class ExecutorDashboard extends Component
 
     public function rejectAssignment($assignmentId)
     {
-        $assignment = BrigadierAssignment::findOrFail($assignmentId);
+        $assignment = Assignment::findOrFail($assignmentId);
         
         if ($assignment->brigadier_id !== auth()->id()) {
             session()->flash('error', 'Ошибка доступа');

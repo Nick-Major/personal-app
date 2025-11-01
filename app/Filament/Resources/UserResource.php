@@ -365,7 +365,7 @@ class UserResource extends Resource
                 Tables\Actions\Action::make('view_assignments')
                     ->label('Назначения бригадиром')
                     ->icon('heroicon-o-user-plus')
-                    ->url(fn (User $record) => BrigadierAssignmentResource::getUrl('index', [
+                    ->url(fn (User $record) => AssignmentResource::getUrl('index', [
                         'tableFilters[brigadier][values]' => [$record->id]
                     ]))
                     ->color('gray')
