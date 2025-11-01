@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use App\Models\WorkRequest; // ← ДОБАВИТЬ ЭТУ СТРОКУ
-use App\Observers\WorkRequestObserver; // ← И ЭТУ СТРОКУ
+use App\Models\WorkRequest;
+use App\Observers\WorkRequestObserver;
+use App\Models\Assignment;
+use App\Observers\AssignmentObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        WorkRequest::observe(WorkRequestObserver::class); // ← ИСПРАВИТЬ ЭТУ СТРОКУ
+        WorkRequest::observe(WorkRequestObserver::class);
+        Assignment::observe(AssignmentObserver::class);
     }
 }

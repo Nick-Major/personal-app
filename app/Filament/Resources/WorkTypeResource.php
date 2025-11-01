@@ -41,16 +41,6 @@ class WorkTypeResource extends Resource
                             ->maxLength(65535)
                             ->placeholder('Подробное описание вида работ...')
                             ->columnSpanFull(),
-                        
-                        // ДОБАВЛЯЕМ ПОЛЕ НАДБАВКИ
-                        Forms\Components\TextInput::make('premium_rate')
-                            ->label('Надбавка к ставке (руб/час)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->step(1)
-                            ->default(0)
-                            ->placeholder('0')
-                            ->helperText('Дополнительная сумма к часовой ставке за этот вид работ'),
                             
                         Forms\Components\Toggle::make('is_active')
                             ->label('Активный вид работ')
@@ -74,13 +64,6 @@ class WorkTypeResource extends Resource
                     ->label('Описание')
                     ->limit(30)
                     ->searchable(),
-                
-                // ДОБАВЛЯЕМ КОЛОНКУ НАДБАВКИ
-                Tables\Columns\TextColumn::make('premium_rate')
-                    ->label('Надбавка')
-                    ->money('RUB')
-                    ->sortable()
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '+ ' . number_format($state, 0, ',', ' ') . ' ₽/час' : '—'),
                 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Активно')
@@ -108,10 +91,6 @@ class WorkTypeResource extends Resource
                     ->placeholder('Все виды работ')
                     ->trueLabel('Только активные')
                     ->falseLabel('Только неактивные'),
-                    
-                Tables\Filters\Filter::make('has_premium')
-                    ->label('С надбавкой')
-                    ->query(fn ($query) => $query->where('premium_rate', '>', 0)),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

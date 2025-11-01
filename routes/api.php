@@ -4,7 +4,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\WorkRequestController;
 use App\Http\Controllers\Api\BrigadierController;
-use App\Http\Controllers\Api\BrigadierAssignmentController;
+use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ExecutorController;
 use Illuminate\Http\Request;
@@ -77,13 +77,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Brigadiers
     Route::get('/brigadiers/available', [BrigadierController::class, 'availableBrigadiers']);
-    // Route::post('/brigadier-assignments', [BrigadierController::class, 'assignBrigadier']);
+    // Route::post('/assignments', [BrigadierController::class, 'assignBrigadier']);
     
-    // Brigadier Assignments
-    Route::apiResource('brigadier-assignments', BrigadierAssignmentController::class);
-    Route::post('/brigadier-assignments/{brigadierAssignment}/confirm', [BrigadierAssignmentController::class, 'confirm']);
-    Route::post('/brigadier-assignments/{brigadierAssignment}/reject', [BrigadierAssignmentController::class, 'reject']);
-    Route::get('/my/brigadier-assignments', [BrigadierAssignmentController::class, 'myAssignments']);
+    // Assignments (единая система)
+    Route::apiResource('assignments', AssignmentController::class);
+    Route::post('/assignments/{assignment}/confirm', [AssignmentController::class, 'confirm']);
+    Route::post('/assignments/{assignment}/reject', [AssignmentController::class, 'reject']);
+    Route::get('/my/assignments', [AssignmentController::class, 'myAssignments']);
     
     // === ЛК ИСПОЛНИТЕЛЯ (Executor) ===
     Route::prefix('my')->group(function () {
@@ -101,10 +101,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/shifts/{shift}/photos', [ExecutorController::class, 'addPhoto']);
         
         // === МАРШРУТЫ БРИГАДИРА (ДОБАВЛЯЕМ) ===
-        Route::get('/brigadier-assignments/pending', [ExecutorController::class, 'getPendingAssignments']);
-        Route::get('/brigadier-assignments/confirmed', [ExecutorController::class, 'getConfirmedAssignments']);
-        Route::post('/brigadier-assignments/{assignment}/confirm', [ExecutorController::class, 'confirmAssignment']);
-        Route::post('/brigadier-assignments/{assignment}/reject', [ExecutorController::class, 'rejectAssignment']);
+        Route::get('/assignments/pending', [ExecutorController::class, 'getPendingAssignments']);
+        Route::get('/assignments/confirmed', [ExecutorController::class, 'getConfirmedAssignments']);
+        Route::post('/assignments/{assignment}/confirm', [ExecutorController::class, 'confirmAssignment']);
+        Route::post('/assignments/{assignment}/reject', [ExecutorController::class, 'rejectAssignment']);
         Route::get('/work-requests', [ExecutorController::class, 'getBrigadierRequests']);
     });
 });

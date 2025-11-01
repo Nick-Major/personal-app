@@ -20,6 +20,7 @@ class ShiftExpenseResource extends Resource
     protected static ?string $modelLabel = 'расход';
     protected static ?string $pluralModelLabel = 'Операционные расходы';
     protected static ?string $navigationGroup = 'Финансы';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {

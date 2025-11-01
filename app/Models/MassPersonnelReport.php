@@ -82,6 +82,11 @@ class MassPersonnelReport extends Model
         return $this->hasMany(MassPersonnelVisitedLocation::class);
     }
 
+    public function compensations()
+    {
+        return $this->morphMany(Compensation::class, 'compensatable');
+    }
+
     // === РАСЧЕТНЫЕ МЕТОДЫ ===
 
     /**

@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Compensation extends Model
 {
-    // app/Models/Compensation.php
+    protected $table = 'compensations'; // Явно указываем имя таблицы
+    
     protected $fillable = [
         'description',
         'requested_amount',
-        'approved_amount', 
+        'approved_amount',
         'status',
         'approved_by',
         'approval_notes',
@@ -24,7 +25,7 @@ class Compensation extends Model
     }
 
     // Связь с утверждающим
-    public function approvedBy() 
+    public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
     }

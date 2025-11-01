@@ -33,7 +33,8 @@ class Shift extends Model
         'is_paid',
         'expenses_total',
         'compensation_amount',
-        'compensation_description'
+        'compensation_description',
+        'assignment_number' // ✅ ДОБАВЛЕНО - номер назначения для бригадиров
     ];
 
     protected $casts = [
@@ -105,6 +106,16 @@ class Shift extends Model
         return $this->hasMany(ShiftPhoto::class);
     }
 
+    public function compensations()
+    {
+        return $this->morphMany(Compensation::class, 'compensatable');
+    }
+
+    public function assignmentDate()
+    {
+        return $this->hasOne(BrigadierAssignmentDate::class, 'shift_id');
+    }
+
     // === SCOPES ===
     public function scopeForUser($query, $userId)
     {
@@ -126,6 +137,11 @@ class Shift extends Model
         return $query->where('role', 'brigadier');
     }
 
+    public function scopeExecutor($query)
+    {
+        return $query->where('role', 'executor');
+    }
+
     public function scopePendingApproval($query)
     {
         return $query->where('status', 'pending_approval');
@@ -144,6 +160,11 @@ class Shift extends Model
     public function scopeUnpaid($query)
     {
         return $query->where('is_paid', false);
+    }
+
+    public function scopeByAssignmentNumber($query, $assignmentNumber)
+    {
+        return $query->where('assignment_number', $assignmentNumber);
     }
 
     // === МЕТОДЫ РАСЧЕТОВ ===
@@ -308,6 +329,11 @@ class Shift extends Model
     public function isBrigadier()
     {
         return $this->role === 'brigadier';
+    }
+
+    public function isExecutor()
+    {
+        return $this->role === 'executor';
     }
 
     /**

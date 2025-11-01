@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\BrigadierAssignment;
+use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,15 +15,14 @@ class BrigadierController extends Controller
     {
         $date = $request->get('date', now()->format('Y-m-d'));
 
-        // ИСПРАВЛЕНО: ищем пользователей с ролью 'brigadier', а не 'executor'
+        // Ищем пользователей с ролью 'brigadier'
         $brigadiers = User::role('brigadier')
-            ->whereDoesntHave('brigadierAssignments', function($query) use ($date) {
-                $query->whereHas('assignmentDates', function($q) use ($date) {
-                    $q->where('assignment_date', $date)
+            ->whereDoesntHave('assignments', function($query) use ($date) {
+                $query->where('assignment_type', 'brigadier_schedule')
+                      ->where('planned_date', $date)
                       ->where('status', 'confirmed');
-                });
             })
-            ->select('id', 'name', 'surname', 'specialization', 'phone')
+            ->select('id', 'name', 'surname', 'phone')
             ->get();
 
         return response()->json($brigadiers);
@@ -34,7 +33,11 @@ class BrigadierController extends Controller
     {
         $validated = $request->validate([
             'brigadier_id' => 'required|exists:users,id',
-            'assignment_date' => 'required|date',
+            'planned_date' => 'required|date',
+            'planned_start_time' => 'required|date_format:H:i',
+            'planned_duration_hours' => 'required|numeric|min:1|max:24',
+            'planned_address_id' => 'nullable|exists:addresses,id',
+            'assignment_comment' => 'nullable|string|max:1000',
         ]);
 
         // Проверяем, что пользователь является бригадиром
@@ -44,11 +47,10 @@ class BrigadierController extends Controller
         }
 
         // Проверяем, что бригадир доступен на эту дату
-        $existingAssignment = BrigadierAssignment::where('brigadier_id', $validated['brigadier_id'])
-            ->whereHas('assignmentDates', function($query) use ($validated) {
-                $query->where('assignment_date', $validated['assignment_date'])
-                      ->where('status', 'confirmed');
-            })
+        $existingAssignment = Assignment::where('user_id', $validated['brigadier_id'])
+            ->where('assignment_type', 'brigadier_schedule')
+            ->where('planned_date', $validated['planned_date'])
+            ->where('status', 'confirmed')
             ->first();
 
         if ($existingAssignment) {
@@ -56,21 +58,22 @@ class BrigadierController extends Controller
         }
 
         try {
-            $assignment = BrigadierAssignment::create([
-                'brigadier_id' => $validated['brigadier_id'],
-                'initiator_id' => auth()->id(),
-                'status' => 'pending'
-            ]);
-
-            // Создаем запись даты назначения
-            $assignment->assignmentDates()->create([
-                'assignment_date' => $validated['assignment_date'],
+            $assignment = Assignment::create([
+                'assignment_type' => 'brigadier_schedule',
+                'user_id' => $validated['brigadier_id'],
+                'role_in_shift' => 'brigadier',
+                'source' => 'initiator',
+                'planned_date' => $validated['planned_date'],
+                'planned_start_time' => $validated['planned_start_time'],
+                'planned_duration_hours' => $validated['planned_duration_hours'],
+                'planned_address_id' => $validated['planned_address_id'] ?? null,
+                'assignment_comment' => $validated['assignment_comment'] ?? null,
                 'status' => 'pending'
             ]);
 
             return response()->json([
                 'message' => 'Бригадир назначен',
-                'assignment' => $assignment->load('assignmentDates')
+                'assignment' => $assignment
             ]);
 
         } catch (\Exception $e) {
